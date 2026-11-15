@@ -1,0 +1,257 @@
+/* AVORA Landing Page Styles */
+.hero-section {
+  padding: 64px 0 72px;
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: 48px;
+  align-items: stretch;
+}
+
+.hero-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 24px;
+}
+
+.hero-kicker {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--accent-primary);
+}
+
+.hero-headline {
+  font-size: clamp(2.25rem, 4vw, 3.5rem);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  max-width: 18ch;
+}
+
+.hero-description {
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: var(--ink-secondary);
+  max-width: 54ch;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.hero-quick-join {
+  display: flex;
+  gap: 10px;
+  max-width: 440px;
+  padding-top: 8px;
+}
+
+.hero-quick-join input {
+  flex: 1;
+}
+
+.hero-media-frame {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border-hairline);
+  background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+  min-height: 360px;
+}
+
+.hero-media-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Proof / Metrics Strip below Hero */
+.metrics-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  margin-top: 48px;
+  padding-top: 32px;
+  border-top: 1px solid var(--border-hairline);
+}
+
+.metric-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metric-value {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ink-primary);
+}
+
+.metric-label {
+  font-size: 0.875rem;
+  color: var(--ink-secondary);
+}
+
+/* Capabilities Bento Section */
+.section-block {
+  padding: 80px 0;
+}
+
+.section-header {
+  max-width: 680px;
+  margin-bottom: 48px;
+}
+
+.section-header h2 {
+  font-size: clamp(1.75rem, 2.5vw, 2.35rem);
+  margin-bottom: 12px;
+}
+
+.section-header p {
+  color: var(--ink-secondary);
+  font-size: 1.0625rem;
+}
+
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.bento-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.bento-card.span-2 {
+  grid-column: span 2;
+}
+
+.bento-index {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--accent-primary);
+  margin-bottom: 8px;
+}
+
+.bento-card h3 {
+  font-size: 1.25rem;
+  margin-bottom: 10px;
+}
+
+.bento-card p {
+  color: var(--ink-secondary);
+}
+
+.bento-media {
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border-hairline);
+  aspect-ratio: 4 / 3;
+  background-color: var(--bg-subtle);
+}
+
+.bento-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* How It Works Section */
+.workflow-section {
+  background-color: var(--bg-surface);
+  border-top: 1px solid var(--border-hairline);
+  border-bottom: 1px solid var(--border-hairline);
+  padding: 80px 0;
+}
+
+.workflow-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 32px;
+}
+
+.workflow-step {
+  padding-top: 20px;
+  border-top: 2px solid var(--border-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.workflow-step-num {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--accent-primary);
+}
+
+.workflow-step h3 {
+  font-size: 1.125rem;
+}
+
+.workflow-step p {
+  font-size: 0.9375rem;
+  color: var(--ink-secondary);
+}
+
+/* Final CTA Band */
+.cta-band {
+  padding: 72px 0;
+}
+
+.cta-surface {
+  background-color: var(--ink-primary);
+  color: var(--ink-inverse);
+  border-radius: var(--radius-lg);
+  padding: 48px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+}
+
+.cta-surface h2 {
+  color: var(--ink-inverse);
+  font-size: clamp(1.5rem, 2.5vw, 2.125rem);
+  margin-bottom: 8px;
+}
+
+.cta-surface p {
+  color: #CBD5E1;
+  max-width: 56ch;
+}
+
+@media (max-width: 960px) {
+  .hero-grid,
+  .bento-grid,
+  .workflow-steps,
+  .metrics-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .bento-card.span-2 {
+    grid-column: span 1;
+  }
+
+  .cta-surface {
+    padding: 32px 24px;
+  }
+}

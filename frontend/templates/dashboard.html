@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Dashboard — AVORA{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}" />
+{% endblock %}
+
+{% block body %}
+<div class="app-shell">
+  <aside class="app-sidebar">
+    <div>
+      <div class="sidebar-brand">
+        <a href="/" class="brand-wordmark">AVORA</a>
+      </div>
+      <nav class="sidebar-nav" aria-label="Workspace navigation">
+        <a href="/dashboard/" class="sidebar-link is-active">Dashboard</a>
+        <a href="/profile/" class="sidebar-link">Profile &amp; Settings</a>
+        <a href="/admin-panel/" class="sidebar-link hidden" id="sidebar-admin-link">Admin Panel</a>
+      </nav>
+    </div>
+
+    <div class="sidebar-user-box">
+      <div>
+        <div class="sidebar-user-name" id="sidebar-user-name">Loading...</div>
+        <div class="sidebar-user-email" id="sidebar-user-email"></div>
+      </div>
+      <button type="button" id="logout-btn" class="btn btn-secondary btn-sm">Sign Out</button>
+    </div>
+  </aside>
+
+  <div class="app-main">
+    <header class="workspace-topbar">
+      <div class="breadcrumb">Workspace / <strong>Dashboard</strong></div>
+      <div class="topbar-actions">
+        <button type="button" id="open-create-modal-btn" class="btn btn-primary">Create Meeting</button>
+      </div>
+    </header>
+
+    <main class="workspace-content">
+      <section>
+        <h1 id="dashboard-welcome" style="font-size: 1.75rem; margin-bottom: 6px;">Welcome back</h1>
+        <p style="color: var(--ink-secondary);">Start a new meeting room, join an existing session by ID, or review recent whiteboards and shared files.</p>
+      </section>
+
+      <section class="kpi-grid" aria-label="Meeting statistics">
+        <div class="kpi-card">
+          <span class="kpi-label">Total Meetings</span>
+          <span class="kpi-value tabular-nums" id="stat-total-meetings">—</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Active Now</span>
+          <span class="kpi-value tabular-nums" id="stat-active-meetings">—</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Hosted by You</span>
+          <span class="kpi-value tabular-nums" id="stat-hosted-meetings">—</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Shared Files</span>
+          <span class="kpi-value tabular-nums" id="stat-shared-files">—</span>
+        </div>
+      </section>
+
+      <section class="dashboard-split">
+        <div class="panel-card">
+          <div class="panel-header">
+            <h2>Join or Create a Meeting</h2>
+          </div>
+          <form id="dashboard-join-form" class="inline-join-form" novalidate>
+            <label for="dashboard-meeting-code" class="sr-only">Meeting ID or Invite URL</label>
+            <input type="text" id="dashboard-meeting-code" class="form-control mono" placeholder="Enter Meeting ID (e.g. avr-xxxx-xxxx) or invite link" required />
+            <button type="submit" class="btn btn-primary">Join Meeting</button>
+          </form>
+          <p class="field-hint">Need an instant room? Click Create Meeting to generate a shareable link immediately.</p>
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-header">
+            <h2>Recent Shared Files</h2>
+          </div>
+          <div id="recent-files-list">
+            <div class="skeleton" style="height: 76px;"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel-card">
+        <div class="panel-header">
+          <h2>Meetings &amp; History</h2>
+          <div class="segmented-bar" role="tablist" aria-label="Filter meetings">
+            <button type="button" class="segmented-btn is-active" data-meeting-filter="all">All</button>
+            <button type="button" class="segmented-btn" data-meeting-filter="active">Active</button>
+            <button type="button" class="segmented-btn" data-meeting-filter="scheduled">Upcoming</button>
+            <button type="button" class="segmented-btn" data-meeting-filter="ended">Ended</button>
+          </div>
+        </div>
+
+        <div class="table-wrap" id="meetings-table-container">
+          <div class="skeleton" style="height: 160px;"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- Create Meeting Modal -->
+<div id="create-meeting-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="create-modal-title">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <h2 id="create-modal-title" class="modal-title">Create New Meeting</h2>
+      <button type="button" class="btn btn-ghost btn-sm" id="close-create-modal-btn" aria-label="Close modal">Close</button>
+    </div>
+    <form id="create-meeting-form" class="auth-form" novalidate>
+      <div class="form-group">
+        <label for="meeting-title-input" class="form-label">Meeting Title</label>
+        <input type="text" id="meeting-title-input" class="form-control" placeholder="e.g. Product Architecture Review" required />
+        <span class="field-error" id="err-meeting-title"></span>
+      </div>
+      <div class="form-group">
+        <label for="meeting-scheduled-input" class="form-label">Scheduled Time (Optional — leave blank to start now)</label>
+        <input type="datetime-local" id="meeting-scheduled-input" class="form-control" />
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="cancel-create-modal-btn">Cancel</button>
+        <button type="submit" id="create-meeting-submit-btn" class="btn btn-primary">Create &amp; Enter Room</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module" src="{% static 'js/pages/dashboard.js' %}"></script>
+{% endblock %}

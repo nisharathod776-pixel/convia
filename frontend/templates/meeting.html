@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Meeting Room — AVORA{% endblock %}
+{% block body_class %}meeting-body{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/meeting.css' %}" />
+{% endblock %}
+
+{% block body %}
+<div class="meeting-shell" data-meeting-code="{{ meeting_code|default:'' }}">
+  <header class="meeting-header">
+    <div class="meeting-header-left">
+      <a href="/dashboard/" class="meeting-brand">AVORA</a>
+      <span class="meta-sep" aria-hidden="true">|</span>
+      <div style="min-width: 0;">
+        <div class="meeting-title" id="room-meeting-title">Loading meeting...</div>
+        <div class="meeting-meta mono" id="room-meeting-code">{{ meeting_code|default:'' }}</div>
+      </div>
+    </div>
+
+    <div class="meeting-header-right">
+      <div class="connection-state" id="socket-status-wrap">
+        <span class="live-indicator" id="socket-indicator"></span>
+        <span id="socket-status-text">Connecting...</span>
+      </div>
+      <button type="button" id="copy-invite-btn" class="ctrl-btn">Copy Invite Link</button>
+    </div>
+  </header>
+
+  <div class="meeting-workspace" id="meeting-workspace">
+    <main class="meeting-stage">
+      <div class="stage-toolbar">
+        <div class="stage-tabs" role="tablist" aria-label="Workspace view">
+          <button type="button" class="stage-tab is-active" id="tab-video-view" data-stage-view="video">Video Grid</button>
+          <button type="button" class="stage-tab" id="tab-whiteboard-view" data-stage-view="whiteboard">Whiteboard</button>
+        </div>
+        <div class="meeting-meta tabular-nums" id="participant-count-label">1 participant</div>
+      </div>
+
+      <!-- Multi-Participant Video Grid -->
+      <section id="video-stage" class="video-grid" aria-label="Video participants">
+        <article class="video-tile" id="local-video-tile">
+          <video id="local-video" autoplay playsinline muted></video>
+          <div class="video-avatar-fallback hidden" id="local-avatar-fallback">
+            <div class="avatar-circle" id="local-avatar-initials">YO</div>
+            <span id="local-fallback-name">You</span>
+          </div>
+          <div class="video-overlay-bar">
+            <span class="video-participant-name" id="local-name-label">You</span>
+            <span class="video-media-flags" id="local-flags-label">Mic On · Cam On</span>
+          </div>
+        </article>
+      </section>
+
+      <!-- Collaborative HTML5 Whiteboard -->
+      <section id="whiteboard-stage" class="whiteboard-stage hidden" aria-label="Collaborative whiteboard">
+        <div class="wb-toolbar">
+          <div class="wb-tool-group">
+            <button type="button" class="wb-btn is-active" data-wb-tool="pen">Pen</button>
+            <button type="button" class="wb-btn" data-wb-tool="text">Text</button>
+            <button type="button" class="wb-btn" data-wb-tool="eraser">Eraser</button>
+          </div>
+
+          <div class="wb-tool-group" aria-label="Ink colors">
+            <button type="button" class="wb-color-swatch is-active" data-wb-color="#0F172A" style="background: #0F172A;" aria-label="Slate Black"></button>
+            <button type="button" class="wb-color-swatch" data-wb-color="#1D4ED8" style="background: #1D4ED8;" aria-label="Cobalt Blue"></button>
+            <button type="button" class="wb-color-swatch" data-wb-color="#16A34A" style="background: #16A34A;" aria-label="Forest Green"></button>
+            <button type="button" class="wb-color-swatch" data-wb-color="#DC2626" style="background: #DC2626;" aria-label="Crimson Red"></button>
+            <button type="button" class="wb-color-swatch" data-wb-color="#D97706" style="background: #D97706;" aria-label="Amber"></button>
+          </div>
+
+          <div class="wb-tool-group">
+            <label for="wb-brush-size" class="meeting-meta">Size</label>
+            <select id="wb-brush-size" class="wb-btn">
+              <option value="2">2px</option>
+              <option value="4" selected>4px</option>
+              <option value="8">8px</option>
+              <option value="14">14px</option>
+            </select>
+            <button type="button" class="wb-btn" id="wb-clear-btn">Clear Board</button>
+          </div>
+        </div>
+
+        <div class="wb-canvas-wrap" id="wb-canvas-wrap">
+          <canvas id="whiteboard-canvas"></canvas>
+        </div>
+      </section>
+    </main>
+
+    <!-- Collapsible Side Drawer: Participants & File Sharing -->
+    <aside class="meeting-drawer hidden" id="meeting-drawer" aria-label="Meeting sidebar">
+      <div class="drawer-header">
+        <div class="drawer-tabs">
+          <button type="button" class="drawer-tab is-active" data-drawer-tab="participants">Participants</button>
+          <button type="button" class="drawer-tab" data-drawer-tab="files">Shared Files</button>
+        </div>
+        <button type="button" class="wb-btn" id="close-drawer-btn" aria-label="Close drawer">Close</button>
+      </div>
+
+      <div class="drawer-body" id="drawer-participants-panel">
+        <div id="participants-list"></div>
+      </div>
+
+      <div class="drawer-body hidden" id="drawer-files-panel">
+        <div class="file-upload-box">
+          <label for="meeting-file-input" style="font-size: 0.875rem; font-weight: 600;">Share a file with participants</label>
+          <input type="file" id="meeting-file-input" style="font-size: 0.8125rem; color: var(--studio-ink-muted);" />
+          <div class="upload-progress-track hidden" id="upload-progress-track">
+            <div class="upload-progress-fill" id="upload-progress-fill"></div>
+          </div>
+          <div id="upload-status-text" class="meeting-meta">Allowed: PDF, images, docs, spreadsheets, archives (max 25 MB).</div>
+          <button type="button" id="upload-file-btn" class="btn btn-primary btn-sm">Upload File</button>
+        </div>
+
+        <div id="shared-files-list"></div>
+      </div>
+    </aside>
+  </div>
+
+  <footer class="meeting-controls">
+    <div class="controls-center">
+      <button type="button" id="toggle-mic-btn" class="ctrl-btn">
+        <span class="ctrl-label" id="mic-btn-label">Mute Mic</span>
+      </button>
+      <button type="button" id="toggle-cam-btn" class="ctrl-btn">
+        <span class="ctrl-label" id="cam-btn-label">Turn Off Cam</span>
+      </button>
+      <button type="button" id="toggle-screen-btn" class="ctrl-btn">
+        <span class="ctrl-label" id="screen-btn-label">Share Screen</span>
+      </button>
+      <button type="button" id="toggle-wb-btn" class="ctrl-btn">
+        <span class="ctrl-label">Whiteboard</span>
+      </button>
+      <button type="button" id="toggle-participants-btn" class="ctrl-btn">
+        <span class="ctrl-label">Participants</span>
+      </button>
+      <button type="button" id="toggle-files-btn" class="ctrl-btn">
+        <span class="ctrl-label">Files</span>
+      </button>
+    </div>
+
+    <div class="controls-center">
+      <button type="button" id="leave-meeting-btn" class="ctrl-btn">Leave Meeting</button>
+      <button type="button" id="end-meeting-btn" class="ctrl-btn is-danger hidden">End Meeting</button>
+    </div>
+  </footer>
+</div>
+
+<script src="{% static 'vendor/socket.io.min.js' %}"></script>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module" src="{% static 'js/meeting/room.js' %}"></script>
+{% endblock %}

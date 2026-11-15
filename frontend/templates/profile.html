@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Profile &amp; Settings — AVORA{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}" />
+{% endblock %}
+
+{% block body %}
+<div class="app-shell">
+  <aside class="app-sidebar">
+    <div>
+      <div class="sidebar-brand">
+        <a href="/" class="brand-wordmark">AVORA</a>
+      </div>
+      <nav class="sidebar-nav" aria-label="Workspace navigation">
+        <a href="/dashboard/" class="sidebar-link">Dashboard</a>
+        <a href="/profile/" class="sidebar-link is-active">Profile &amp; Settings</a>
+        <a href="/admin-panel/" class="sidebar-link hidden" id="sidebar-admin-link">Admin Panel</a>
+      </nav>
+    </div>
+
+    <div class="sidebar-user-box">
+      <div>
+        <div class="sidebar-user-name" id="sidebar-user-name">Loading...</div>
+        <div class="sidebar-user-email" id="sidebar-user-email"></div>
+      </div>
+      <button type="button" id="logout-btn" class="btn btn-secondary btn-sm">Sign Out</button>
+    </div>
+  </aside>
+
+  <div class="app-main">
+    <header class="workspace-topbar">
+      <div class="breadcrumb">Workspace / <strong>Profile &amp; Settings</strong></div>
+      <div class="topbar-actions">
+        <a href="/dashboard/" class="btn btn-secondary">Back to Dashboard</a>
+      </div>
+    </header>
+
+    <main class="workspace-content">
+      <section>
+        <h1 style="font-size: 1.75rem; margin-bottom: 6px;">Profile &amp; Account Settings</h1>
+        <p style="color: var(--ink-secondary);">Manage your display identity, bio, and password security.</p>
+      </section>
+
+      <div class="profile-grid">
+        <section class="panel-card">
+          <div class="panel-header">
+            <h2>Profile Information</h2>
+          </div>
+          <div id="profile-alert" class="alert-banner hidden" role="alert"></div>
+          <form id="profile-form" class="auth-form" novalidate>
+            <div class="form-group">
+              <label for="prof-username" class="form-label">Username</label>
+              <input type="text" id="prof-username" class="form-control" disabled />
+            </div>
+            <div class="form-group">
+              <label for="prof-full-name" class="form-label">Full Name</label>
+              <input type="text" id="prof-full-name" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label for="prof-email" class="form-label">Email Address</label>
+              <input type="email" id="prof-email" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label for="prof-bio" class="form-label">Role / Bio</label>
+              <textarea id="prof-bio" class="form-control" rows="3" placeholder="e.g. Principal Systems Architect"></textarea>
+            </div>
+            <div class="meta-line" id="account-meta-line"></div>
+            <button type="submit" id="save-profile-btn" class="btn btn-primary">Save Changes</button>
+          </form>
+        </section>
+
+        <section class="panel-card">
+          <div class="panel-header">
+            <h2>Change Password</h2>
+          </div>
+          <div id="password-alert" class="alert-banner hidden" role="alert"></div>
+          <form id="password-form" class="auth-form" novalidate>
+            <div class="form-group">
+              <label for="old-password" class="form-label">Current Password</label>
+              <input type="password" id="old-password" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label for="new-password" class="form-label">New Password</label>
+              <input type="password" id="new-password" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label for="confirm-new-password" class="form-label">Confirm New Password</label>
+              <input type="password" id="confirm-new-password" class="form-control" required />
+            </div>
+            <button type="submit" id="change-password-btn" class="btn btn-secondary">Update Password</button>
+          </form>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module" src="{% static 'js/pages/profile.js' %}"></script>
+{% endblock %}

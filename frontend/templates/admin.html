@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Admin Console — AVORA{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}" />
+{% endblock %}
+
+{% block body %}
+<div class="app-shell">
+  <aside class="app-sidebar">
+    <div>
+      <div class="sidebar-brand">
+        <a href="/" class="brand-wordmark">AVORA</a>
+      </div>
+      <nav class="sidebar-nav" aria-label="Workspace navigation">
+        <a href="/dashboard/" class="sidebar-link">Dashboard</a>
+        <a href="/profile/" class="sidebar-link">Profile &amp; Settings</a>
+        <a href="/admin-panel/" class="sidebar-link is-active" id="sidebar-admin-link">Admin Panel</a>
+      </nav>
+    </div>
+
+    <div class="sidebar-user-box">
+      <div>
+        <div class="sidebar-user-name" id="sidebar-user-name">Loading...</div>
+        <div class="sidebar-user-email" id="sidebar-user-email"></div>
+      </div>
+      <button type="button" id="logout-btn" class="btn btn-secondary btn-sm">Sign Out</button>
+    </div>
+  </aside>
+
+  <div class="app-main">
+    <header class="workspace-topbar">
+      <div class="breadcrumb">Administration / <strong>System Overview</strong></div>
+      <div class="topbar-actions">
+        <button type="button" id="admin-refresh-btn" class="btn btn-secondary">Refresh Data</button>
+      </div>
+    </header>
+
+    <main class="workspace-content">
+      <div id="admin-access-error" class="alert-banner alert-error hidden" role="alert"></div>
+
+      <section class="kpi-grid" aria-label="Platform statistics">
+        <div class="kpi-card">
+          <span class="kpi-label">Registered Users</span>
+          <span class="kpi-value tabular-nums" id="adm-total-users">—</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Active Accounts</span>
+          <span class="kpi-value tabular-nums" id="adm-active-users">—</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Total Meetings</span>
+          <span class="kpi-value tabular-nums" id="adm-total-meetings">—</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Uploaded Files</span>
+          <span class="kpi-value tabular-nums" id="adm-total-files">—</span>
+        </div>
+      </section>
+
+      <section class="panel-card">
+        <div class="panel-header">
+          <h2>User Accounts</h2>
+          <input type="search" id="admin-user-search" class="form-control" style="max-width: 260px;" placeholder="Filter by username or email" />
+        </div>
+        <div class="table-wrap" id="admin-users-table">
+          <div class="skeleton" style="height: 140px;"></div>
+        </div>
+      </section>
+
+      <section class="panel-card">
+        <div class="panel-header">
+          <h2>Meeting Records</h2>
+        </div>
+        <div class="table-wrap" id="admin-meetings-table">
+          <div class="skeleton" style="height: 140px;"></div>
+        </div>
+      </section>
+
+      <section class="dashboard-split">
+        <section class="panel-card">
+          <div class="panel-header">
+            <h2>Uploaded Files</h2>
+          </div>
+          <div class="table-wrap" id="admin-files-table">
+            <div class="skeleton" style="height: 120px;"></div>
+          </div>
+        </section>
+
+        <section class="panel-card">
+          <div class="panel-header">
+            <h2>Application Activity</h2>
+          </div>
+          <div class="table-wrap" id="admin-activity-table">
+            <div class="skeleton" style="height: 120px;"></div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module" src="{% static 'js/pages/admin.js' %}"></script>
+{% endblock %}

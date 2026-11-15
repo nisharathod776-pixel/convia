@@ -1,0 +1,25 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}AVORA — Real-Time Video, Whiteboard &amp; Collaboration{% endblock %}</title>
+  <meta name="description" content="AVORA is a real-time video conferencing, screen sharing, file exchange, and collaborative whiteboard platform." />
+  <meta property="og:title" content="AVORA — Real-Time Video &amp; Collaboration Platform" />
+  <meta property="og:description" content="Host WebRTC video meetings, share screens, exchange files securely, and sketch together on a real-time whiteboard." />
+  <meta property="og:type" content="website" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{% static 'css/tokens.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/main.css' %}" />
+  {% block extra_css %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  {% block body %}{% endblock %}
+  <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+  <script type="module" src="{% static 'js/core/ui.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

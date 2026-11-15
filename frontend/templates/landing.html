@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}AVORA — Real-Time Video Conferencing &amp; Collaboration{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/landing.css' %}" />
+{% endblock %}
+
+{% block body %}
+<header class="topbar">
+  <div class="container topbar-inner">
+    <a href="/" class="brand-wordmark">AVORA</a>
+    <nav class="topbar-nav" aria-label="Primary navigation">
+      <a href="#capabilities" class="topbar-link">Capabilities</a>
+      <a href="#workflow" class="topbar-link">How It Works</a>
+      <a href="#collaboration" class="topbar-link">Collaboration</a>
+      <a href="/login/" class="topbar-link" id="nav-auth-link">Sign In</a>
+    </nav>
+    <div class="topbar-actions desktop-only">
+      <a href="/register/" class="btn btn-primary" id="nav-primary-cta">Get Started</a>
+    </div>
+    <button type="button" class="mobile-menu-btn" id="mobile-menu-toggle" aria-expanded="false" aria-controls="mobile-drawer" aria-label="Toggle navigation menu">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  </div>
+  <div id="mobile-drawer" class="mobile-drawer hidden">
+    <a href="#capabilities">Capabilities</a>
+    <a href="#workflow">How It Works</a>
+    <a href="#collaboration">Collaboration</a>
+    <a href="/login/" id="mobile-auth-link">Sign In</a>
+    <a href="/register/" class="btn btn-primary" id="mobile-primary-cta">Get Started</a>
+  </div>
+</header>
+
+<main>
+  <section class="hero-section">
+    <div class="container">
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <p class="hero-kicker">Real-Time Video, Screen Share &amp; Shared Canvas</p>
+          <h1 class="hero-headline">Clear meetings built for live engineering and team collaboration.</h1>
+          <p class="hero-description">
+            AVORA brings peer-to-peer WebRTC video and audio, instant screen sharing, protected meeting file exchange, and a synchronized HTML5 whiteboard into a single browser workspace.
+          </p>
+          <div class="hero-actions">
+            <a href="/register/" class="btn btn-primary btn-lg" id="hero-get-started">Get Started</a>
+            <button type="button" class="btn btn-secondary btn-lg" id="hero-open-join">Join Meeting</button>
+          </div>
+          <form class="hero-quick-join" id="landing-join-form" novalidate>
+            <label for="landing-meeting-code" class="sr-only">Meeting ID</label>
+            <input
+              type="text"
+              id="landing-meeting-code"
+              class="form-control mono"
+              placeholder="Enter meeting ID (e.g. avr-7k2m-9p4x)"
+              autocomplete="off"
+            />
+            <button type="submit" class="btn btn-primary">Join</button>
+          </form>
+        </div>
+        <div class="hero-media-frame">
+          <img src="{% static 'img/hero-studio.jpg' %}" alt="AVORA modern communication studio and glass-walled conference room" referrerpolicy="no-referrer" />
+        </div>
+      </div>
+
+      <div class="metrics-strip">
+        <div class="metric-item">
+          <span class="metric-value tabular-nums">DTLS-SRTP</span>
+          <span class="metric-label">Encrypted WebRTC peer-to-peer media</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-value tabular-nums">Sub-50ms</span>
+          <span class="metric-label">Python Socket.IO room signaling &amp; sync</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-value tabular-nums">25 MB</span>
+          <span class="metric-label">Authenticated meeting file transfers</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-value tabular-nums">Persistent</span>
+          <span class="metric-label">Whiteboard state saved for late joiners</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="capabilities" class="section-block">
+    <div class="container">
+      <div class="section-header">
+        <h2>Everything required to run a working session</h2>
+        <p>Every tool in AVORA is wired to persistent server state and real-time room sockets—no external plugins or desktop downloads required.</p>
+      </div>
+
+      <div class="bento-grid">
+        <article class="bento-card span-2">
+          <div>
+            <p class="bento-index">01. Multi-Participant WebRTC Video &amp; Audio</p>
+            <h3>Direct encrypted video calls with instant track switching</h3>
+            <p>
+              Negotiate offers, answers, and ICE candidates over authenticated Socket.IO rooms. Toggle microphones and cameras cleanly, monitor active participants, and switch into browser screen sharing without dropping the call.
+            </p>
+          </div>
+          <div class="bento-media" style="aspect-ratio: 16/9;">
+            <img src="{% static 'img/audio-studio.jpg' %}" alt="Studio microphone and acoustic control desk" referrerpolicy="no-referrer" />
+          </div>
+        </article>
+
+        <article class="bento-card">
+          <div>
+            <p class="bento-index">02. Collaborative Whiteboard</p>
+            <h3>Live HTML5 Canvas synchronized across the room</h3>
+            <p>
+              Draw freehand diagrams, add text annotations, switch ink colors and stroke widths, erase cleanly, and recover the exact board state when participants join late.
+            </p>
+          </div>
+          <div class="bento-media">
+            <img src="{% static 'img/collab-whiteboard.jpg' %}" alt="Minimalist desk with glass whiteboard surface and stylus" referrerpolicy="no-referrer" />
+          </div>
+        </article>
+
+        <article class="bento-card">
+          <div>
+            <p class="bento-index">03. Screen Sharing</p>
+            <h3>Full-screen, window, or tab capture</h3>
+            <p>
+              Present design files or live code using the browser Screen Capture API and automatically restore your camera feed when sharing ends.
+            </p>
+          </div>
+        </article>
+
+        <article class="bento-card">
+          <div>
+            <p class="bento-index">04. Protected File Exchange</p>
+            <h3>Room-scoped uploads with MIME validation</h3>
+            <p>
+              Upload documents, archives, or media inside a meeting with live progress tracking. Downloads are verified server-side for authorized participants only.
+            </p>
+          </div>
+        </article>
+
+        <article class="bento-card">
+          <div>
+            <p class="bento-index">05. Governance &amp; Administration</p>
+            <h3>JWT access control and audit visibility</h3>
+            <p>
+              Host controls to end sessions, user profile management, meeting history records, and an admin console with account activation controls.
+            </p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="workflow" class="workflow-section">
+    <div class="container">
+      <div class="section-header">
+        <h2>How a session flows on AVORA</h2>
+        <p>From account creation to post-meeting records, every step operates over authenticated REST APIs and room-scoped WebSockets.</p>
+      </div>
+
+      <div class="workflow-steps">
+        <div class="workflow-step">
+          <span class="workflow-step-num">01</span>
+          <h3>Create your account</h3>
+          <p>Register with validated credentials backed by Django password hashing and JWT access/refresh tokens.</p>
+        </div>
+        <div class="workflow-step">
+          <span class="workflow-step-num">02</span>
+          <h3>Launch or join a room</h3>
+          <p>Create a meeting room from your dashboard to generate a unique meeting ID and shareable invitation link.</p>
+        </div>
+        <div class="workflow-step">
+          <span class="workflow-step-num">03</span>
+          <h3>Collaborate live</h3>
+          <p>Stream camera and microphone audio, share your screen, exchange files, and sketch together on the whiteboard.</p>
+        </div>
+        <div class="workflow-step">
+          <span class="workflow-step-num">04</span>
+          <h3>Review history</h3>
+          <p>Access past meeting records, uploaded files, and participant logs anytime from your personalized dashboard.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="collaboration" class="cta-band">
+    <div class="container">
+      <div class="cta-surface">
+        <div>
+          <h2>Ready to host your next meeting?</h2>
+          <p>Sign in to open your workspace dashboard, start an instant WebRTC room, or join an existing session with a meeting ID.</p>
+        </div>
+        <div class="hero-actions">
+          <a href="/register/" class="btn btn-primary btn-lg">Create Free Account</a>
+          <a href="/login/" class="btn btn-secondary btn-lg">Sign In</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <span class="brand-wordmark">AVORA</span>
+    <div class="footer-links">
+      <a href="/login/">Sign In</a>
+      <a href="/register/">Register</a>
+      <a href="/dashboard/">Dashboard</a>
+      <a href="/profile/">Profile</a>
+    </div>
+    <p class="field-hint">&copy; 2026 AVORA Communication Platform. All rights reserved.</p>
+  </div>
+</footer>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module" src="{% static 'js/pages/landing.js' %}"></script>
+{% endblock %}
