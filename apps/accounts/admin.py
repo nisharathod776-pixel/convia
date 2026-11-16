@@ -9,5 +9,5 @@ class UserAdmin(BaseUserAdmin):
     list_display = ("username", "email", "full_name", "role", "is_active", "is_staff", "date_joined")
     list_filter = ("role", "is_active", "is_staff")
     fieldsets = BaseUserAdmin.fieldsets + (
-        ("AVORA Profile", {"fields": ("full_name", "bio", "role")}),
+        ("CONVIA Profile", {"fields": ("full_name", "bio", "role")}),
     )

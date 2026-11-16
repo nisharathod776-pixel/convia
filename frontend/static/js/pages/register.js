@@ -67,7 +67,7 @@ function initRegisterPage() {
 
       setTokens({ access: data.access, refresh: data.refresh });
       setStoredUser(data.user);
-      showToast('Account created. Welcome to AVORA.', 'success');
+      showToast('Account created. Welcome to CONVIA.', 'success');
       window.location.replace('/dashboard/');
     } catch (error) {
       setAlert('register-alert', error.message || 'Unable to register account.', 'error');

@@ -1,6 +1,10 @@
 import pytest
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
+
+from apps.fileshare.models import SharedFile
+from apps.meetings.models import Meeting
 
 User = get_user_model()
 
@@ -52,3 +56,53 @@ def test_admin_panel_server_side_authorization():
         format="json",
     )
     assert self_toggle.status_code == 400
+
+
+@pytest.mark.django_db
+def test_admin_overview_statistics_use_database_records(tmp_path, settings):
+    settings.MEDIA_ROOT = tmp_path
+    admin = User.objects.create_user(
+        username="statsadmin",
+        email="statsadmin@example.com",
+        password="Password123!",
+        is_staff=True,
+    )
+    member = User.objects.create_user(username="statsmember", email="statsmember@example.com", password="Password123!")
+    deactivated = User.objects.create_user(
+        username="statsinactive",
+        email="statsinactive@example.com",
+        password="Password123!",
+        is_active=False,
+    )
+    Meeting.objects.create(title="Active room", host=member)
+    ended_meeting = Meeting.objects.create(title="Completed room", host=member, status=Meeting.STATUS_ENDED)
+    SharedFile.objects.create(
+        meeting=ended_meeting,
+        uploaded_by=member,
+        file=SimpleUploadedFile("stats.txt", b"four", content_type="text/plain"),
+        original_name="stats.txt",
+        file_size=4,
+        mime_type="text/plain",
+    )
+
+    client = APIClient()
+    client.force_authenticate(user=admin)
+    response = client.get("/api/v1/admin/overview/")
+
+    assert response.status_code == 200
+    assert response.data["stats"] == {
+        "total_users": 3,
+        "active_users": 2,
+        "deactivated_users": 1,
+        "total_meetings": 2,
+        "active_meetings": 1,
+        "completed_meetings": 1,
+        "total_files": 1,
+        "storage_bytes": 4,
+    }
+
+
+@pytest.mark.django_db
+def test_admin_overview_rejects_unauthenticated_requests():
+    response = APIClient().get("/api/v1/admin/overview/")
+    assert response.status_code == 401

@@ -7,6 +7,7 @@ django.setup()
 
 import socketio  # noqa: E402
 from apps.realtime.server import sio  # noqa: E402
+import apps.realtime.handlers_chat  # noqa: F401,E402
 import apps.realtime.handlers_meeting  # noqa: F401,E402
 import apps.realtime.handlers_webrtc  # noqa: F401,E402
 import apps.realtime.handlers_whiteboard  # noqa: F401,E402

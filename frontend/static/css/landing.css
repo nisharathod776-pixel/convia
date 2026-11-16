@@ -255,3 +255,53 @@
     padding: 32px 24px;
   }
 }
+
+.convia-brand {
+    display: inline-flex;
+    align-items: center;
+    width: 160px;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    text-decoration: none;
+}
+
+.convia-brand img {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+/* Convia logo size and alignment fix */
+a.convia-brand {
+    display: inline-flex;
+    align-items: center;
+    width: 140px;
+    max-width: 140px;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    text-decoration: none;
+}
+
+a.convia-brand img {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+
+/* Convia navbar branding */
+.topbar {
+    background-color: #0B1530 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.topbar-link {
+    color: #FFFFFF !important;
+}
+
+.topbar-link:hover,
+.topbar-link.is-active {
+    color: #60A5FA !important;
+}

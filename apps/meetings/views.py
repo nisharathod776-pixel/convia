@@ -27,19 +27,14 @@ class DashboardSummaryView(APIView):
             .distinct()
             .select_related("host")
         )
-        recent_files = (
-            SharedFile.objects.filter(Q(meeting__host=user) | Q(meeting__participants__user=user))
-            .distinct()
-            .select_related("meeting", "uploaded_by")[:10]
-        )
+        shared_files = SharedFile.objects.filter(meeting__in=meetings).distinct()
+        recent_files = shared_files.select_related("meeting", "uploaded_by")[:10]
 
         stats = {
             "total_meetings": meetings.count(),
             "active_meetings": meetings.filter(status=Meeting.STATUS_ACTIVE).count(),
             "hosted_meetings": meetings.filter(host=user).count(),
-            "shared_files": SharedFile.objects.filter(
-                Q(meeting__host=user) | Q(meeting__participants__user=user)
-            ).distinct().count(),
+            "shared_files": shared_files.count(),
         }
 
         return Response(

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Meeting Room — AVORA{% endblock %}
+{% block title %}Meeting Room — CONVIA{% endblock %}
 {% block body_class %}meeting-body{% endblock %}
 
 {% block extra_css %}
@@ -12,7 +12,7 @@
 <div class="meeting-shell" data-meeting-code="{{ meeting_code|default:'' }}">
   <header class="meeting-header">
     <div class="meeting-header-left">
-      <a href="/dashboard/" class="meeting-brand">AVORA</a>
+      <a href="/dashboard/" class="meeting-brand">CONVIA</a>
       <span class="meta-sep" aria-hidden="true">|</span>
       <div style="min-width: 0;">
         <div class="meeting-title" id="room-meeting-title">Loading meeting...</div>
@@ -57,44 +57,75 @@
       <!-- Collaborative HTML5 Whiteboard -->
       <section id="whiteboard-stage" class="whiteboard-stage hidden" aria-label="Collaborative whiteboard">
         <div class="wb-toolbar">
-          <div class="wb-tool-group">
-            <button type="button" class="wb-btn is-active" data-wb-tool="pen">Pen</button>
-            <button type="button" class="wb-btn" data-wb-tool="text">Text</button>
-            <button type="button" class="wb-btn" data-wb-tool="eraser">Eraser</button>
-          </div>
+          <section class="wb-tool-section" aria-label="Drawing tools">
+            <h3 class="wb-section-label">Tools</h3>
+            <div class="wb-tool-group">
+              <button type="button" class="wb-btn is-active" data-wb-tool="pen" aria-pressed="true">Pencil</button>
+              <button type="button" class="wb-btn" data-wb-tool="eraser" aria-pressed="false">Eraser</button>
+            </div>
+          </section>
 
-          <div class="wb-tool-group" aria-label="Ink colors">
-            <button type="button" class="wb-color-swatch is-active" data-wb-color="#0F172A" style="background: #0F172A;" aria-label="Slate Black"></button>
-            <button type="button" class="wb-color-swatch" data-wb-color="#1D4ED8" style="background: #1D4ED8;" aria-label="Cobalt Blue"></button>
-            <button type="button" class="wb-color-swatch" data-wb-color="#16A34A" style="background: #16A34A;" aria-label="Forest Green"></button>
-            <button type="button" class="wb-color-swatch" data-wb-color="#DC2626" style="background: #DC2626;" aria-label="Crimson Red"></button>
-            <button type="button" class="wb-color-swatch" data-wb-color="#D97706" style="background: #D97706;" aria-label="Amber"></button>
-          </div>
+          <section class="wb-tool-section" aria-label="Shapes">
+            <h3 class="wb-section-label">Shapes</h3>
+            <div class="wb-tool-group">
+              <button type="button" class="wb-btn" data-wb-tool="rectangle" aria-pressed="false">Rectangle</button>
+              <button type="button" class="wb-btn" data-wb-tool="ellipse" aria-pressed="false">Circle / Oval</button>
+              <button type="button" class="wb-btn" data-wb-tool="triangle" aria-pressed="false">Triangle</button>
+              <button type="button" class="wb-btn" data-wb-tool="line" aria-pressed="false">Straight Line</button>
+              <button type="button" class="wb-btn" data-wb-tool="arrow" aria-pressed="false">Arrow</button>
+            </div>
+          </section>
 
-          <div class="wb-tool-group">
-            <label for="wb-brush-size" class="meeting-meta">Size</label>
-            <select id="wb-brush-size" class="wb-btn">
-              <option value="2">2px</option>
-              <option value="4" selected>4px</option>
-              <option value="8">8px</option>
-              <option value="14">14px</option>
-            </select>
-            <button type="button" class="wb-btn" id="wb-clear-btn">Clear Board</button>
-          </div>
+          <section class="wb-tool-section" aria-label="Colours">
+            <h3 class="wb-section-label">Colours</h3>
+            <div class="wb-tool-group">
+              <button type="button" class="wb-color-swatch is-active" data-wb-color="#000000" style="background-color: #000000;" aria-label="Black" aria-pressed="true"></button>
+              <button type="button" class="wb-color-swatch" data-wb-color="#EF4444" style="background-color: #EF4444;" aria-label="Red" aria-pressed="false"></button>
+              <button type="button" class="wb-color-swatch" data-wb-color="#2563EB" style="background-color: #2563EB;" aria-label="Blue" aria-pressed="false"></button>
+              <button type="button" class="wb-color-swatch" data-wb-color="#16A34A" style="background-color: #16A34A;" aria-label="Green" aria-pressed="false"></button>
+              <button type="button" class="wb-color-swatch" data-wb-color="#FACC15" style="background-color: #FACC15;" aria-label="Yellow" aria-pressed="false"></button>
+              <button type="button" class="wb-color-swatch" data-wb-color="#F97316" style="background-color: #F97316;" aria-label="Orange" aria-pressed="false"></button>
+              <button type="button" class="wb-color-swatch" data-wb-color="#8B5CF6" style="background-color: #8B5CF6;" aria-label="Purple" aria-pressed="false"></button>
+              <button type="button" class="wb-color-swatch" data-wb-color="#EC4899" style="background-color: #EC4899;" aria-label="Pink" aria-pressed="false"></button>
+              <button type="button" class="wb-color-swatch" data-wb-color="#FFFFFF" style="background-color: #FFFFFF;" aria-label="White" aria-pressed="false"></button>
+            </div>
+          </section>
+
+          <section class="wb-tool-section wb-settings-section" aria-label="Line thickness and board actions">
+            <h3 class="wb-section-label">Thickness</h3>
+            <div class="wb-tool-group">
+              <label for="wb-brush-size" class="sr-only">Line thickness</label>
+              <select id="wb-brush-size" class="wb-btn">
+                <option value="2">2px</option>
+                <option value="4" selected>4px</option>
+                <option value="8">8px</option>
+                <option value="14">14px</option>
+              </select>
+              <div class="wb-tool-group wb-eraser-controls hidden" id="wb-eraser-controls" aria-label="Eraser size">
+                <button type="button" class="wb-btn" id="wb-eraser-smaller" aria-label="Decrease eraser size" title="Ctrl+-">−</button>
+                <span class="meeting-meta" id="wb-eraser-size-value">24px</span>
+                <button type="button" class="wb-btn" id="wb-eraser-larger" aria-label="Increase eraser size" title="Ctrl++">+</button>
+              </div>
+              <button type="button" class="wb-btn" id="wb-clear-btn">Clear Board</button>
+            </div>
+          </section>
         </div>
 
         <div class="wb-canvas-wrap" id="wb-canvas-wrap">
-          <canvas id="whiteboard-canvas"></canvas>
+          <canvas id="whiteboard-canvas" tabindex="0" aria-label="Whiteboard drawing area"></canvas>
+          <canvas id="whiteboard-preview" class="wb-preview-canvas" aria-hidden="true"></canvas>
+          <div class="wb-offline-message hidden" id="wb-offline-message" role="status">Reconnecting to sync the whiteboard…</div>
         </div>
       </section>
     </main>
 
     <!-- Collapsible Side Drawer: Participants & File Sharing -->
-    <aside class="meeting-drawer hidden" id="meeting-drawer" aria-label="Meeting sidebar">
+    <aside class="meeting-drawer hidden" id="meeting-drawer" aria-label="Meeting sidebar" aria-hidden="true">
       <div class="drawer-header">
         <div class="drawer-tabs">
           <button type="button" class="drawer-tab is-active" data-drawer-tab="participants">Participants</button>
           <button type="button" class="drawer-tab" data-drawer-tab="files">Shared Files</button>
+          <button type="button" class="drawer-tab" data-drawer-tab="chat">Chat</button>
         </div>
         <button type="button" class="wb-btn" id="close-drawer-btn" aria-label="Close drawer">Close</button>
       </div>
@@ -115,6 +146,20 @@
         </div>
 
         <div id="shared-files-list"></div>
+      </div>
+
+      <div class="drawer-body hidden chat-panel" id="drawer-chat-panel">
+        <div class="chat-panel-heading">
+          <h2>Chat</h2>
+          <button type="button" class="wb-btn" id="close-chat-btn" aria-label="Close chat panel">Close</button>
+        </div>
+        <div class="chat-connection-status" id="chat-connection-status" role="status">Connecting…</div>
+        <div class="chat-messages" id="chat-messages" role="log" aria-live="polite" aria-relevant="additions"></div>
+        <form class="chat-form" id="chat-form">
+          <label class="sr-only" for="chat-message-input">Message</label>
+          <input id="chat-message-input" type="text" maxlength="2000" autocomplete="off" placeholder="Write a message…" />
+          <button type="submit" class="btn btn-primary btn-sm" id="chat-send-btn" disabled>Send</button>
+        </form>
       </div>
     </aside>
   </div>
@@ -138,6 +183,9 @@
       </button>
       <button type="button" id="toggle-files-btn" class="ctrl-btn">
         <span class="ctrl-label">Files</span>
+      </button>
+      <button type="button" id="toggle-chat-btn" class="ctrl-btn" aria-controls="meeting-drawer" aria-expanded="false">
+        <span class="ctrl-label">Chat</span>
       </button>
     </div>
 

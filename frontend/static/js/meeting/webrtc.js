@@ -40,7 +40,7 @@ export class PeerConnectionManager {
 
     try {
       this.localStream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { facingMode: { ideal: 'user' }, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: { echoCancellation: true, noiseSuppression: true },
       });
       this.cameraTrack = this.localStream.getVideoTracks()[0] || null;
@@ -380,9 +380,11 @@ export class PeerConnectionManager {
     const camLabel = document.getElementById('cam-btn-label');
     const scrBtn = document.getElementById('toggle-screen-btn');
     const scrLabel = document.getElementById('screen-btn-label');
+    const localTile = document.getElementById('local-video-tile');
 
     const showVideo = this.isScreenSharing || (this.camEnabled && Boolean(this.cameraTrack));
     fallback?.classList.toggle('hidden', showVideo);
+    localTile?.classList.toggle('is-video-off', !showVideo);
 
     if (flags) {
       const micTxt = this.micEnabled ? 'Mic On' : 'Muted';
@@ -456,6 +458,7 @@ export class PeerConnectionManager {
 
     entry.fallbackEl?.classList.toggle('hidden', Boolean(showVideo));
     entry.tileEl.classList.toggle('is-screen', Boolean(p.screen_sharing));
+    entry.tileEl.classList.toggle('is-video-off', !showVideo);
 
     if (entry.flagsEl) {
       const micTxt = p.mic_enabled === false ? 'Muted' : 'Mic On';

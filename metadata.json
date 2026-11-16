@@ -1,6 +1,6 @@
 {
-  "name": "AVORA",
-  "description": "AVORA – Real-Time Communication, Video Conferencing, Screen Sharing, File Sharing & Collaborative Whiteboard Platform",
+  "name": "CONVIA",
+  "description": "CONVIA – Real-Time Communication, Video Conferencing, Screen Sharing, File Sharing & Collaborative Whiteboard Platform",
   "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

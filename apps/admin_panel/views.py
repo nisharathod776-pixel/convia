@@ -1,5 +1,6 @@
 import logging
 from django.contrib.auth import get_user_model
+from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
@@ -28,9 +29,12 @@ class AdminOverviewView(APIView):
         stats = {
             "total_users": User.objects.count(),
             "active_users": User.objects.filter(is_active=True).count(),
+            "deactivated_users": User.objects.filter(is_active=False).count(),
             "total_meetings": Meeting.objects.count(),
             "active_meetings": Meeting.objects.filter(status=Meeting.STATUS_ACTIVE).count(),
+            "completed_meetings": Meeting.objects.filter(status=Meeting.STATUS_ENDED).count(),
             "total_files": SharedFile.objects.count(),
+            "storage_bytes": SharedFile.objects.aggregate(total=Sum("file_size"))["total"] or 0,
         }
 
         return Response(

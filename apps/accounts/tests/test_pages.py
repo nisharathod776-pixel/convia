@@ -16,7 +16,7 @@ def test_all_html5_pages_and_health_endpoint():
     ]:
         res = client.get(path)
         assert res.status_code == 200, f"Expected 200 for {path}, got {res.status_code}"
-        assert b"AVORA" in res.content
+        assert b"CONVIA" in res.content
 
     health = client.get("/api/v1/health/")
     assert health.status_code == 200

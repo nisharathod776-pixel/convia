@@ -88,7 +88,7 @@ textarea {
   position: sticky;
   top: 0;
   z-index: 40;
-  background-color: rgba(255, 255, 255, 0.92);
+  background-color: #0b1633;
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border-hairline);
 }
@@ -120,7 +120,7 @@ textarea {
 .topbar-link {
   font-size: 0.9375rem;
   font-weight: 500;
-  color: var(--ink-secondary);
+  color: #FFFFFF;
   white-space: nowrap;
   flex-shrink: 0;
   padding: 6px 0;
@@ -130,8 +130,8 @@ textarea {
 
 .topbar-link:hover,
 .topbar-link.is-active {
-  color: var(--ink-primary);
-  border-bottom-color: var(--accent-primary);
+color: #60A5FA;
+border-bottom-color: var(--accent-primary);
 }
 
 .topbar-actions {

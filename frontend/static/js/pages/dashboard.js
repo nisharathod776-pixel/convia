@@ -1,15 +1,20 @@
-import { apiRequest, getAccessToken } from '../core/api.js';
+import { apiRequest, clearAuthStorage, getAccessToken } from '../core/api.js';
 import { extractMeetingCode, requireAuth } from '../core/auth.js';
 import { copyToClipboard, formatBytes, formatDateTime, setFieldError, showToast } from '../core/ui.js';
 
 let allMeetings = [];
 let activeFilter = 'all';
+let dashboardLoadPromise = null;
 
 function renderMeetingsTable() {
   const container = document.getElementById('meetings-table-container');
   if (!container) return;
 
-  const filtered = allMeetings.filter((m) => (activeFilter === 'all' ? true : m.status === activeFilter));
+  const filtered = allMeetings.filter((meeting) => {
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'hosted') return meeting.is_host;
+    return meeting.status === activeFilter;
+  });
 
   if (!filtered.length) {
     container.innerHTML = '';
@@ -136,6 +141,14 @@ function renderMeetingsTable() {
   container.appendChild(table);
 }
 
+function setMeetingFilter(filter) {
+  activeFilter = filter;
+  document.querySelectorAll('#meetings-history [data-meeting-filter]').forEach((button) => {
+    button.classList.toggle('is-active', button.getAttribute('data-meeting-filter') === filter);
+  });
+  renderMeetingsTable();
+}
+
 function renderRecentFiles(files) {
   const container = document.getElementById('recent-files-list');
   if (!container) return;
@@ -194,18 +207,39 @@ async function downloadAuthorizedFile(fileId, filename) {
 }
 
 async function loadDashboard() {
-  try {
-    const data = await apiRequest('/meetings/dashboard/');
-    document.getElementById('stat-total-meetings').textContent = String(data.stats.total_meetings);
-    document.getElementById('stat-active-meetings').textContent = String(data.stats.active_meetings);
-    document.getElementById('stat-hosted-meetings').textContent = String(data.stats.hosted_meetings);
-    document.getElementById('stat-shared-files').textContent = String(data.stats.shared_files);
+  if (dashboardLoadPromise) return dashboardLoadPromise;
 
-    allMeetings = data.meetings || [];
-    renderMeetingsTable();
-    renderRecentFiles(data.recent_files || []);
-  } catch (err) {
-    showToast(err.message || 'Failed to load dashboard data.', 'error');
+  dashboardLoadPromise = (async () => {
+    try {
+      const data = await apiRequest('/meetings/dashboard/');
+      document.getElementById('stat-total-meetings').textContent = String(data.stats.total_meetings ?? 0);
+      document.getElementById('stat-active-meetings').textContent = String(data.stats.active_meetings ?? 0);
+      document.getElementById('stat-hosted-meetings').textContent = String(data.stats.hosted_meetings ?? 0);
+      document.getElementById('stat-shared-files').textContent = String(data.stats.shared_files ?? 0);
+
+      allMeetings = data.meetings || [];
+      renderMeetingsTable();
+      renderRecentFiles(data.recent_files || []);
+    } catch (err) {
+      if (err.status === 401) {
+        clearAuthStorage();
+        const next = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.replace(`/login/?next=${next}`);
+        return;
+      }
+
+      const meetingContainer = document.getElementById('meetings-table-container');
+      const filesContainer = document.getElementById('recent-files-list');
+      if (meetingContainer) meetingContainer.textContent = 'Could not load meeting history.';
+      if (filesContainer) filesContainer.textContent = 'Could not load shared files.';
+      showToast(err.message || 'Failed to load dashboard data.', 'error');
+    }
+  })();
+
+  try {
+    await dashboardLoadPromise;
+  } finally {
+    dashboardLoadPromise = null;
   }
 }
 
@@ -276,15 +310,19 @@ async function initDashboard() {
 
   const welcome = document.getElementById('dashboard-welcome');
   if (welcome) {
-    welcome.textContent = `Welcome back, ${user.full_name || user.username}`;
+    const displayName = user.full_name?.trim() || user.username || 'there';
+    welcome.textContent = `Welcome back, ${displayName}`;
   }
 
-  document.querySelectorAll('[data-meeting-filter]').forEach((btn) => {
+  document.querySelectorAll('#meetings-history [data-meeting-filter]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      activeFilter = btn.getAttribute('data-meeting-filter');
-      document.querySelectorAll('[data-meeting-filter]').forEach((b) => b.classList.remove('is-active'));
-      btn.classList.add('is-active');
-      renderMeetingsTable();
+      setMeetingFilter(btn.getAttribute('data-meeting-filter'));
+    });
+  });
+
+  document.querySelectorAll('[data-dashboard-filter]').forEach((card) => {
+    card.addEventListener('click', () => {
+      setMeetingFilter(card.getAttribute('data-dashboard-filter'));
     });
   });
 
@@ -307,6 +345,11 @@ async function initDashboard() {
 
   initCreateModal();
   await loadDashboard();
+
+  window.addEventListener('focus', loadDashboard);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') loadDashboard();
+  });
 }
 
 document.addEventListener('DOMContentLoaded', initDashboard);

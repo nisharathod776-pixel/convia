@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Dashboard — AVORA{% endblock %}
+{% block title %}Dashboard — CONVIA{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/dashboard.css' %}" />
@@ -12,7 +12,7 @@
   <aside class="app-sidebar">
     <div>
       <div class="sidebar-brand">
-        <a href="/" class="brand-wordmark">AVORA</a>
+        <a href="/" class="brand-wordmark">CONVIA</a>
       </div>
       <nav class="sidebar-nav" aria-label="Workspace navigation">
         <a href="/dashboard/" class="sidebar-link is-active">Dashboard</a>
@@ -45,22 +45,22 @@
       </section>
 
       <section class="kpi-grid" aria-label="Meeting statistics">
-        <div class="kpi-card">
+        <a class="kpi-card" href="#meetings-history" data-dashboard-filter="all">
           <span class="kpi-label">Total Meetings</span>
           <span class="kpi-value tabular-nums" id="stat-total-meetings">—</span>
-        </div>
-        <div class="kpi-card">
+        </a>
+        <a class="kpi-card" href="#meetings-history" data-dashboard-filter="active">
           <span class="kpi-label">Active Now</span>
           <span class="kpi-value tabular-nums" id="stat-active-meetings">—</span>
-        </div>
-        <div class="kpi-card">
+        </a>
+        <a class="kpi-card" href="#meetings-history" data-dashboard-filter="hosted">
           <span class="kpi-label">Hosted by You</span>
           <span class="kpi-value tabular-nums" id="stat-hosted-meetings">—</span>
-        </div>
-        <div class="kpi-card">
+        </a>
+        <a class="kpi-card" href="#shared-files-section">
           <span class="kpi-label">Shared Files</span>
           <span class="kpi-value tabular-nums" id="stat-shared-files">—</span>
-        </div>
+        </a>
       </section>
 
       <section class="dashboard-split">
@@ -76,7 +76,7 @@
           <p class="field-hint">Need an instant room? Click Create Meeting to generate a shareable link immediately.</p>
         </div>
 
-        <div class="panel-card">
+        <div class="panel-card" id="shared-files-section">
           <div class="panel-header">
             <h2>Recent Shared Files</h2>
           </div>
@@ -86,7 +86,7 @@
         </div>
       </section>
 
-      <section class="panel-card">
+      <section class="panel-card" id="meetings-history">
         <div class="panel-header">
           <h2>Meetings &amp; History</h2>
           <div class="segmented-bar" role="tablist" aria-label="Filter meetings">

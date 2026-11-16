@@ -49,3 +49,45 @@ def test_file_upload_validation_and_authorized_download(tmp_path, settings):
     dl_res = host_client.get(f"/api/v1/files/{file_id}/download/")
     assert dl_res.status_code == 200
     assert b"%PDF-1.4" in b"".join(dl_res.streaming_content)
+
+
+@pytest.mark.django_db
+def test_dashboard_counts_files_shared_with_the_users_meetings(tmp_path, settings):
+    settings.MEDIA_ROOT = tmp_path
+    host = User.objects.create_user(username="dashhost", email="dashhost@example.com", password="Password123!")
+    participant = User.objects.create_user(
+        username="dashparticipant",
+        email="dashparticipant@example.com",
+        password="Password123!",
+    )
+    outsider = User.objects.create_user(username="dashoutsider", email="dashoutsider@example.com", password="Password123!")
+
+    shared_meeting = Meeting.objects.create(title="Shared Room", host=host)
+    MeetingParticipant.objects.create(meeting=shared_meeting, user=host, role="host", is_active=True)
+    MeetingParticipant.objects.create(meeting=shared_meeting, user=participant, is_active=True)
+    private_meeting = Meeting.objects.create(title="Private Room", host=outsider)
+    MeetingParticipant.objects.create(meeting=private_meeting, user=outsider, role="host", is_active=True)
+
+    host_client = APIClient()
+    host_client.force_authenticate(user=host)
+    upload = host_client.post(
+        f"/api/v1/meetings/{shared_meeting.meeting_code}/files/",
+        {"file": SimpleUploadedFile("shared.pdf", b"%PDF-shared", content_type="application/pdf")},
+        format="multipart",
+    )
+    assert upload.status_code == 201
+
+    outsider_client = APIClient()
+    outsider_client.force_authenticate(user=outsider)
+    private_upload = outsider_client.post(
+        f"/api/v1/meetings/{private_meeting.meeting_code}/files/",
+        {"file": SimpleUploadedFile("private.pdf", b"%PDF-private", content_type="application/pdf")},
+        format="multipart",
+    )
+    assert private_upload.status_code == 201
+
+    participant_client = APIClient()
+    participant_client.force_authenticate(user=participant)
+    assert host_client.get("/api/v1/meetings/dashboard/").data["stats"]["shared_files"] == 1
+    assert participant_client.get("/api/v1/meetings/dashboard/").data["stats"]["shared_files"] == 1
+    assert outsider_client.get("/api/v1/meetings/dashboard/").data["stats"]["shared_files"] == 1

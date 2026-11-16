@@ -3,14 +3,19 @@ import { requireAuth } from '../core/auth.js';
 import { formatBytes, formatDateTime, setAlert, showToast } from '../core/ui.js';
 
 let adminData = null;
+let currentAdminId = null;
 
 function renderUsersTable(query = '') {
   const container = document.getElementById('admin-users-table');
   if (!container || !adminData) return;
 
   const q = query.trim().toLowerCase();
+  const statusFilter = document.getElementById('admin-user-status-filter')?.value || 'all';
+  const roleFilter = document.getElementById('admin-user-role-filter')?.value || 'all';
   const users = (adminData.users || []).filter((u) =>
-    !q || u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.full_name || '').toLowerCase().includes(q)
+    (!q || u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.full_name || '').toLowerCase().includes(q))
+    && (statusFilter === 'all' || (statusFilter === 'active' ? u.is_active : !u.is_active))
+    && (roleFilter === 'all' || (roleFilter === 'admin' ? (u.is_staff || u.role === 'admin') : !(u.is_staff || u.role === 'admin')))
   );
 
   if (!users.length) {
@@ -46,7 +51,8 @@ function renderUsersTable(query = '') {
     emailTd.textContent = u.email;
 
     const roleTd = document.createElement('td');
-    roleTd.textContent = u.is_staff ? 'Admin' : 'Member';
+    const isAdmin = u.is_staff || u.role === 'admin';
+    roleTd.textContent = isAdmin ? 'Admin' : 'Member';
 
     const statusTd = document.createElement('td');
     const st = document.createElement('span');
@@ -64,6 +70,10 @@ function renderUsersTable(query = '') {
     toggleBtn.type = 'button';
     toggleBtn.className = `btn btn-sm ${u.is_active ? 'btn-danger' : 'btn-primary'}`;
     toggleBtn.textContent = u.is_active ? 'Deactivate' : 'Activate';
+    if (u.id === currentAdminId) {
+      toggleBtn.disabled = true;
+      toggleBtn.title = 'You cannot change your own account status.';
+    }
     toggleBtn.addEventListener('click', async () => {
       toggleBtn.disabled = true;
       try {
@@ -175,7 +185,7 @@ function renderFilesTable() {
 
   const table = document.createElement('table');
   table.className = 'data-table';
-  table.innerHTML = `<thead><tr><th>File</th><th>Meeting</th><th class="num">Size</th><th class="num">Action</th></tr></thead><tbody></tbody>`;
+  table.innerHTML = `<thead><tr><th>File</th><th>Meeting</th><th>Uploaded By</th><th class="num">Size</th><th class="num">Action</th></tr></thead><tbody></tbody>`;
   const tbody = table.querySelector('tbody');
 
   files.forEach((f) => {
@@ -185,6 +195,8 @@ function renderFilesTable() {
     const mTd = document.createElement('td');
     mTd.className = 'mono';
     mTd.textContent = f.meeting_code;
+    const uploaderTd = document.createElement('td');
+    uploaderTd.textContent = f.uploader_username || 'Unknown';
     const sTd = document.createElement('td');
     sTd.className = 'num tabular-nums';
     sTd.textContent = formatBytes(f.file_size);
@@ -210,7 +222,7 @@ function renderFilesTable() {
     });
     aTd.appendChild(dlBtn);
 
-    tr.append(nTd, mTd, sTd, aTd);
+    tr.append(nTd, mTd, uploaderTd, sTd, aTd);
     tbody.appendChild(tr);
   });
 
@@ -253,10 +265,14 @@ async function loadAdminOverview() {
   setAlert('admin-access-error', '');
   try {
     adminData = await apiRequest('/admin/overview/');
-    document.getElementById('adm-total-users').textContent = String(adminData.stats.total_users);
-    document.getElementById('adm-active-users').textContent = String(adminData.stats.active_users);
-    document.getElementById('adm-total-meetings').textContent = String(adminData.stats.total_meetings);
-    document.getElementById('adm-total-files').textContent = String(adminData.stats.total_files);
+    document.getElementById('adm-total-users').textContent = String(adminData.stats.total_users ?? 0);
+    document.getElementById('adm-active-users').textContent = String(adminData.stats.active_users ?? 0);
+    document.getElementById('adm-deactivated-users').textContent = String(adminData.stats.deactivated_users ?? 0);
+    document.getElementById('adm-total-meetings').textContent = String(adminData.stats.total_meetings ?? 0);
+    document.getElementById('adm-active-meetings').textContent = String(adminData.stats.active_meetings ?? 0);
+    document.getElementById('adm-completed-meetings').textContent = String(adminData.stats.completed_meetings ?? 0);
+    document.getElementById('adm-total-files').textContent = String(adminData.stats.total_files ?? 0);
+    document.getElementById('adm-storage-bytes').textContent = formatBytes(adminData.stats.storage_bytes ?? 0);
 
     const searchInput = document.getElementById('admin-user-search');
     renderUsersTable(searchInput ? searchInput.value : '');
@@ -271,9 +287,16 @@ async function loadAdminOverview() {
 async function initAdminPage() {
   const user = await requireAuth();
   if (!user) return;
+  currentAdminId = user.id;
 
   document.getElementById('admin-user-search')?.addEventListener('input', (e) => {
     renderUsersTable(e.target.value);
+  });
+  document.getElementById('admin-user-status-filter')?.addEventListener('change', () => {
+    renderUsersTable(document.getElementById('admin-user-search')?.value || '');
+  });
+  document.getElementById('admin-user-role-filter')?.addEventListener('change', () => {
+    renderUsersTable(document.getElementById('admin-user-search')?.value || '');
   });
   document.getElementById('admin-refresh-btn')?.addEventListener('click', loadAdminOverview);
   await loadAdminOverview();
