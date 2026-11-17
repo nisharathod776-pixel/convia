@@ -72,6 +72,19 @@ export function formatDateTime(isoString) {
   });
 }
 
+export function downloadBlobUrl(url, filename) {
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  try {
+    document.body.appendChild(link);
+    link.click();
+  } finally {
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+}
+
 export function getInitials(name) {
   const parts = String(name || 'User').trim().split(/\s+/);
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();

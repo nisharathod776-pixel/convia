@@ -1,9 +1,11 @@
 import { apiRequest, getAccessToken } from '../core/api.js';
 import { requireAuth } from '../core/auth.js';
-import { formatBytes, formatDateTime, setAlert, showToast } from '../core/ui.js';
+import { initMeetingRecordsModal } from '../core/meeting-records-modal.js';
+import { downloadBlobUrl, formatBytes, formatDateTime, setAlert, showToast } from '../core/ui.js';
 
 let adminData = null;
 let currentAdminId = null;
+let recordsModal = null;
 
 function renderUsersTable(query = '') {
   const container = document.getElementById('admin-users-table');
@@ -145,10 +147,22 @@ function renderMeetingsTable() {
 
     const actTd = document.createElement('td');
     actTd.className = 'num';
+    actTd.style.whiteSpace = 'nowrap';
+
+    const recBtn = document.createElement('button');
+    recBtn.type = 'button';
+    recBtn.className = 'btn btn-secondary btn-sm';
+    recBtn.textContent = 'Records';
+    recBtn.addEventListener('click', () => {
+      recordsModal?.open(m, 'attendance');
+    });
+    actTd.appendChild(recBtn);
+
     if (m.status !== 'ended') {
       const endBtn = document.createElement('button');
       endBtn.type = 'button';
       endBtn.className = 'btn btn-danger btn-sm';
+      endBtn.style.marginLeft = '6px';
       endBtn.textContent = 'Force End';
       endBtn.addEventListener('click', async () => {
         endBtn.disabled = true;
@@ -162,8 +176,6 @@ function renderMeetingsTable() {
         }
       });
       actTd.appendChild(endBtn);
-    } else {
-      actTd.textContent = '—';
     }
 
     tr.append(tTd, cTd, hTd, sTd, pTd, crTd, actTd);
@@ -214,11 +226,7 @@ function renderFilesTable() {
       if (!res.ok) return showToast('Download failed.', 'error');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = f.original_name;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadBlobUrl(url, f.original_name);
     });
     aTd.appendChild(dlBtn);
 
@@ -298,6 +306,7 @@ async function initAdminPage() {
   document.getElementById('admin-user-role-filter')?.addEventListener('change', () => {
     renderUsersTable(document.getElementById('admin-user-search')?.value || '');
   });
+  recordsModal = initMeetingRecordsModal();
   document.getElementById('admin-refresh-btn')?.addEventListener('click', loadAdminOverview);
   await loadAdminOverview();
 }

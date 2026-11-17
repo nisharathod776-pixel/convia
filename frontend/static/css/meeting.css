@@ -441,24 +441,27 @@ body.meeting-body {
 
 .drawer-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  padding: 14px 16px;
+  gap: 8px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--studio-border);
 }
 
 .drawer-tabs {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
 }
 
 .drawer-tab {
   border: none;
   background: transparent;
   color: var(--studio-ink-muted);
-  font-size: 0.875rem;
+  font-size: 0.78rem;
   font-weight: 600;
-  padding: 6px 10px;
+  padding: 5px 8px;
   border-radius: 4px;
   cursor: pointer;
 }
@@ -743,5 +746,735 @@ body.meeting-body {
 @media (prefers-reduced-motion: reduce) {
   .meeting-drawer {
     transition: none;
+  }
+}
+
+/* Batch 1: Role Badge, Waiting Room Gate, Teacher Controls, Whiteboard Read-Only, Chat Moderation */
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--studio-border);
+  background-color: var(--studio-elevated);
+  color: var(--studio-ink);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.role-badge.is-teacher {
+  border-color: rgba(59, 130, 246, 0.55);
+  background-color: rgba(29, 78, 216, 0.28);
+  color: #BFDBFE;
+}
+
+.admission-gate-overlay {
+  position: fixed;
+  inset: 60px 0 0 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(11, 17, 32, 0.94);
+  backdrop-filter: blur(8px);
+}
+
+.admission-gate-card {
+  width: 100%;
+  max-width: 460px;
+  padding: 28px 26px;
+  background-color: var(--studio-surface);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.admission-gate-spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.14);
+  border-top-color: #3B82F6;
+  animation: conviaSpin 0.9s linear infinite;
+}
+
+.admission-gate-spinner.is-error {
+  display: none;
+}
+
+@keyframes conviaSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.admission-gate-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--studio-ink);
+  margin: 0;
+}
+
+.admission-gate-message {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--studio-ink-muted);
+  margin: 0;
+}
+
+.admission-gate-meta {
+  font-size: 0.8125rem;
+  color: #FCA5A5;
+  margin: 0;
+}
+
+.admission-gate-actions {
+  margin-top: 6px;
+  display: flex;
+  gap: 10px;
+}
+
+.wb-readonly-banner {
+  padding: 8px 14px;
+  background-color: rgba(29, 78, 216, 0.22);
+  border-bottom: 1px solid var(--studio-border);
+  color: #DBEAFE;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.wb-canvas-wrap.is-readonly {
+  cursor: default;
+}
+
+.wb-toolbar.is-readonly {
+  display: none;
+}
+
+.teacher-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--studio-border);
+}
+
+.teacher-panel-section {
+  background-color: var(--studio-elevated);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.teacher-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.teacher-panel-heading h3 {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--studio-ink);
+  margin: 0;
+}
+
+.waiting-count-pill,
+.ctrl-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background-color: var(--accent-primary);
+  color: #FFFFFF;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.waiting-room-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.waiting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background-color: var(--studio-surface);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--radius-sm);
+}
+
+.waiting-row-info {
+  min-width: 0;
+}
+
+.waiting-row-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--studio-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.waiting-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.perm-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.8125rem;
+  color: var(--studio-ink);
+  cursor: pointer;
+}
+
+.perm-toggle-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-primary);
+  cursor: pointer;
+}
+
+.perm-deadline-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--studio-border);
+}
+
+.perm-datetime-input {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--studio-border);
+  background-color: var(--studio-surface);
+  color: var(--studio-ink);
+  font-size: 0.8125rem;
+}
+
+.perm-deadline-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.chat-message-meta-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-delete-btn {
+  border: none;
+  background: transparent;
+  color: #FCA5A5;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.chat-delete-btn:hover {
+  color: #EF4444;
+  text-decoration: underline;
+}
+
+.ctrl-btn:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+/* Batches 2-5: Moderation, Breakouts, Hand Raise, Attendance & Recording */
+.recording-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(220, 38, 38, 0.55);
+  background-color: rgba(220, 38, 38, 0.22);
+  color: #FCA5A5;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.rec-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #EF4444;
+  animation: recPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes recPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.breakout-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  background-color: rgba(16, 185, 129, 0.16);
+  color: #A7F3D0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.breakout-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  background-color: rgba(16, 185, 129, 0.14);
+  color: #ECFDF5;
+}
+
+.breakout-banner-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.video-hand-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 4;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background-color: rgba(245, 158, 11, 0.92);
+  color: #0F172A;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.perm-select-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.8125rem;
+  color: var(--studio-ink);
+}
+
+.perm-select-input {
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--studio-border);
+  background-color: var(--studio-surface);
+  color: var(--studio-ink);
+  font-size: 0.8125rem;
+}
+
+.perm-bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.participant-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.participant-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.participant-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.mini-action-btn {
+  border: 1px solid var(--studio-border);
+  background-color: var(--studio-surface);
+  color: var(--studio-ink);
+  border-radius: 4px;
+  padding: 3px 7px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mini-action-btn:hover {
+  background-color: #334155;
+}
+
+.mini-action-btn.is-danger {
+  border-color: rgba(220, 38, 38, 0.5);
+  color: #FCA5A5;
+}
+
+.chat-restriction-banner {
+  padding: 8px 14px;
+  background-color: rgba(245, 158, 11, 0.16);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.35);
+  color: #FDE68A;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.breakout-create-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.breakout-broadcast-row {
+  display: flex;
+  gap: 6px;
+}
+
+.breakout-rooms-list,
+.attendance-records-list,
+.recordings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.breakout-card,
+.attendance-row,
+.recording-card {
+  padding: 10px 12px;
+  background-color: var(--studio-elevated);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.breakout-card-header,
+.attendance-row-top,
+.recording-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.breakout-assigned-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 0.78rem;
+  padding: 4px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.attendance-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.attendance-stat-box {
+  background-color: var(--studio-surface);
+  border: 1px solid var(--studio-border);
+  border-radius: 4px;
+  padding: 6px;
+  text-align: center;
+}
+
+.attendance-stat-val {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--studio-ink);
+}
+
+.attendance-stat-lbl {
+  font-size: 0.68rem;
+  color: var(--studio-ink-muted);
+  text-transform: uppercase;
+}
+
+.attendance-status-pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: var(--studio-surface);
+  border: 1px solid var(--studio-border);
+}
+
+.recording-video-preview {
+  width: 100%;
+  max-height: 180px;
+  border-radius: 4px;
+  background-color: #020617;
+}
+
+@media (max-width: 640px) {
+  body.meeting-body {
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .meeting-shell {
+    height: 100vh;
+    height: 100dvh;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .meeting-header {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .meeting-header-left {
+    flex: 1 1 100%;
+    gap: 10px;
+  }
+
+  .meeting-header-right {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .meeting-header-right .ctrl-btn {
+    min-height: 36px;
+    padding: 0 10px;
+  }
+
+  .meeting-stage {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .stage-toolbar,
+  .breakout-banner {
+    flex-wrap: wrap;
+  }
+
+  .stage-tabs {
+    max-width: 100%;
+  }
+
+  .stage-tab {
+    padding-right: 9px;
+    padding-left: 9px;
+  }
+
+  .breakout-banner-info {
+    flex-wrap: wrap;
+  }
+
+  .meeting-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 6px;
+    max-height: min(30dvh, 230px);
+    overflow: auto;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .controls-center {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .controls-center .ctrl-btn {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    min-height: 46px;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px 2px;
+    font-size: 0.68rem;
+    line-height: 1.15;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .meeting-controls .ctrl-label {
+    display: block;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .controls-center:last-child {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .meeting-drawer {
+    inset: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+    width: auto;
+  }
+
+  .drawer-header {
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .drawer-tabs {
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 2px;
+  }
+
+  .drawer-tab {
+    flex: 0 0 auto;
+    min-height: 40px;
+  }
+
+  .drawer-body {
+    padding: 12px;
+  }
+
+  .breakout-broadcast-row {
+    flex-wrap: wrap;
+  }
+
+  .breakout-broadcast-row .perm-datetime-input,
+  .breakout-broadcast-row .btn {
+    flex: 1 1 100%;
+  }
+
+  .wb-toolbar {
+    max-height: min(32dvh, 230px);
+    overflow-y: auto;
+  }
+
+  .wb-tool-section {
+    flex: 1 1 220px;
+  }
+
+  .admission-gate-overlay {
+    inset: 0;
+    padding: 16px;
+  }
+}
+
+@media (max-width: 400px) {
+  .controls-center {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.ctrl-btn.is-recording {
+  background-color: rgba(220, 38, 38, 0.28);
+  border-color: rgba(220, 38, 38, 0.65);
+  color: #FCA5A5;
+}
+
+/* Keep Leave Meeting blue */
+#leave-meeting-btn {
+    background-color: #2460df;
+    color: #ffffff;
+}
+
+
+/* Meeting exit buttons - responsive alignment */
+.meeting-controls > .controls-center:last-child {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 12px;
+    width: auto;
+    padding: 6px 8px;
+    box-sizing: border-box;
+    overflow: visible;
+}
+
+/* Make both buttons fit properly */
+.meeting-controls > .controls-center:last-child .ctrl-btn {
+    flex: 0 1 150px;
+    width: 150px;
+    min-width: 120px;
+    max-width: 150px;
+    min-height: 46px;
+    white-space: nowrap;
+}
+
+/* Leave Meeting - Blue */
+#leave-meeting-btn {
+    background-color: #2563eb;
+    color: white;
+}
+
+@media (max-width: 640px) {
+  .meeting-controls > .controls-center:last-child {
+    width: 100%;
+  }
+
+  .meeting-controls > .controls-center:last-child .ctrl-btn {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    white-space: normal;
+  }
+}
+
+@media (min-width: 641px) {
+  .meeting-controls {
+    overflow-x: visible;
+  }
+
+  .meeting-controls > .controls-center:first-child {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow-x: auto;
+  }
+
+  .meeting-controls > .controls-center:last-child {
+    flex: 0 0 auto;
   }
 }

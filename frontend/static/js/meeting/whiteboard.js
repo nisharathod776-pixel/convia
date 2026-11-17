@@ -16,6 +16,8 @@ export class CollaborativeWhiteboard {
     this.size = 4;
     this.eraserSize = 24;
     this.enabled = false;
+    this.canEdit = true;
+    this.canClear = true;
     this.isDrawing = false;
     this.activePointerId = null;
     this.startPoint = null;
@@ -72,7 +74,7 @@ export class CollaborativeWhiteboard {
     document.getElementById('wb-eraser-smaller')?.addEventListener('click', () => this.adjustEraserSize(-4));
     document.getElementById('wb-eraser-larger')?.addEventListener('click', () => this.adjustEraserSize(4));
     document.getElementById('wb-clear-btn')?.addEventListener('click', () => {
-      if (!this.enabled || !this.socketClient.emit('wb_clear', {})) return;
+      if (!this.enabled || this.canClear === false || !this.socketClient.emit('wb_clear', {})) return;
       this.clearLocal();
     });
 
@@ -90,12 +92,32 @@ export class CollaborativeWhiteboard {
     document.addEventListener('keydown', (event) => this.handleEraserShortcut(event));
   }
 
+  setPermissions({ canEdit = true, canClear = true } = {}) {
+    this.canEdit = Boolean(canEdit);
+    this.canClear = Boolean(canClear);
+    const readonly = !this.canEdit;
+
+    if (this.wrap) this.wrap.classList.toggle('is-readonly', readonly);
+    document.getElementById('wb-readonly-banner')?.classList.toggle('hidden', !readonly);
+    document.querySelector('.wb-toolbar')?.classList.toggle('is-readonly', readonly);
+    document.querySelectorAll('[data-wb-tool], [data-wb-color], #wb-brush-size, #wb-eraser-smaller, #wb-eraser-larger').forEach((el) => {
+      el.toggleAttribute('disabled', readonly);
+    });
+    document.getElementById('wb-clear-btn')?.toggleAttribute('disabled', !this.enabled || !this.canClear);
+    document.getElementById('wb-clear-btn')?.classList.toggle('hidden', !this.canClear);
+
+    if (readonly) {
+      this.cancelDrawing();
+      this.eraserCursor?.classList.add('hidden');
+    }
+  }
+
   setEnabled(enabled) {
     this.enabled = Boolean(enabled);
     if (this.wrap) this.wrap.classList.toggle('is-offline', !this.enabled);
     document.getElementById('wb-offline-message')?.classList.toggle('hidden', this.enabled);
-    document.getElementById('wb-clear-btn')?.toggleAttribute('disabled', !this.enabled);
-    this.canvas?.setAttribute('aria-disabled', String(!this.enabled));
+    document.getElementById('wb-clear-btn')?.toggleAttribute('disabled', !this.enabled || this.canClear === false);
+    this.canvas?.setAttribute('aria-disabled', String(!this.enabled || this.canEdit === false));
     if (!this.enabled) {
       this.cancelDrawing();
       this.eraserCursor.classList.add('hidden');
@@ -110,7 +132,7 @@ export class CollaborativeWhiteboard {
   }
 
   handleEraserShortcut(event) {
-    if (!this.enabled || this.tool !== 'eraser' || document.activeElement !== this.canvas || !event.ctrlKey) return;
+    if (!this.enabled || this.canEdit === false || this.tool !== 'eraser' || document.activeElement !== this.canvas || !event.ctrlKey) return;
     if (event.key === '-' || event.code === 'NumpadSubtract') {
       event.preventDefault();
       this.adjustEraserSize(-4);
@@ -146,7 +168,7 @@ export class CollaborativeWhiteboard {
   }
 
   handlePointerDown(event) {
-    if (!this.enabled || event.button !== 0) return;
+    if (!this.enabled || this.canEdit === false || event.button !== 0) return;
     const point = this.getNormalizedPoint(event);
     if (!DRAW_TOOLS.has(this.tool)) return;
 
@@ -166,7 +188,7 @@ export class CollaborativeWhiteboard {
 
   handlePointerMove(event) {
     this.updateEraserCursor(event);
-    if (!this.enabled || !this.isDrawing || !this.lastPoint || event.pointerId !== this.activePointerId) return;
+    if (!this.enabled || this.canEdit === false || !this.isDrawing || !this.lastPoint || event.pointerId !== this.activePointerId) return;
     const point = this.getNormalizedPoint(event);
     if (SHAPE_TOOLS.has(this.tool)) {
       this.drawPreview(point);
@@ -178,6 +200,10 @@ export class CollaborativeWhiteboard {
 
   handlePointerUp(event) {
     if (!this.isDrawing || event.pointerId !== this.activePointerId) return;
+    if (this.canEdit === false) {
+      this.cancelDrawing();
+      return;
+    }
     const endPoint = this.getNormalizedPoint(event);
     if (SHAPE_TOOLS.has(this.tool) && this.startPoint) {
       this.sendOperation('wb_draw', {

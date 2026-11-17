@@ -256,6 +256,61 @@
   }
 }
 
+@media (max-width: 600px) {
+  .hero-section {
+    padding: 36px 0 42px;
+  }
+
+  .hero-grid {
+    gap: 28px;
+  }
+
+  .hero-media-frame {
+    min-height: 220px;
+  }
+
+  .hero-quick-join {
+    flex-wrap: wrap;
+    max-width: none;
+  }
+
+  .hero-quick-join input {
+    min-width: 0;
+    flex-basis: 100%;
+  }
+
+  .hero-quick-join .btn {
+    width: 100%;
+  }
+
+  .section-block,
+  .workflow-section {
+    padding-top: 52px;
+    padding-bottom: 52px;
+  }
+
+  .section-header {
+    margin-bottom: 28px;
+  }
+
+  .bento-card {
+    padding: 20px;
+  }
+
+  .cta-band {
+    padding: 44px 0;
+  }
+
+  .cta-surface {
+    padding: 24px 18px;
+  }
+
+  .footer-inner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 .convia-brand {
     display: inline-flex;
     align-items: center;

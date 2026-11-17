@@ -1,10 +1,12 @@
 import { apiRequest, clearAuthStorage, getAccessToken } from '../core/api.js';
 import { extractMeetingCode, requireAuth } from '../core/auth.js';
-import { copyToClipboard, formatBytes, formatDateTime, setFieldError, showToast } from '../core/ui.js';
+import { initMeetingRecordsModal } from '../core/meeting-records-modal.js';
+import { copyToClipboard, downloadBlobUrl, formatBytes, formatDateTime, setFieldError, showToast } from '../core/ui.js';
 
 let allMeetings = [];
 let activeFilter = 'all';
 let dashboardLoadPromise = null;
+let recordsModal = null;
 
 function renderMeetingsTable() {
   const container = document.getElementById('meetings-table-container');
@@ -60,6 +62,12 @@ function renderMeetingsTable() {
       sub.textContent = `Scheduled: ${formatDateTime(meeting.scheduled_at)}`;
       titleTd.appendChild(sub);
     }
+    if (meeting.admission_deadline) {
+      const dlSub = document.createElement('div');
+      dlSub.className = 'field-hint';
+      dlSub.textContent = `Admission closes: ${formatDateTime(meeting.admission_deadline)}`;
+      titleTd.appendChild(dlSub);
+    }
 
     const codeTd = document.createElement('td');
     codeTd.className = 'mono';
@@ -112,6 +120,16 @@ function renderMeetingsTable() {
       showToast('Invitation link copied.', 'success');
     });
     actionsTd.appendChild(copyBtn);
+
+    const recordsBtn = document.createElement('button');
+    recordsBtn.type = 'button';
+    recordsBtn.className = 'btn btn-secondary btn-sm';
+    recordsBtn.style.marginLeft = '6px';
+    recordsBtn.textContent = 'Records';
+    recordsBtn.addEventListener('click', () => {
+      recordsModal?.open(meeting, 'attendance');
+    });
+    actionsTd.appendChild(recordsBtn);
 
     if (meeting.is_host && meeting.status !== 'ended') {
       const endBtn = document.createElement('button');
@@ -194,13 +212,7 @@ async function downloadAuthorizedFile(fileId, filename) {
     if (!res.ok) throw new Error('Unable to download file.');
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    downloadBlobUrl(url, filename);
   } catch (err) {
     showToast(err.message, 'error');
   }
@@ -267,11 +279,22 @@ function initCreateModal() {
   form?.addEventListener('submit', async (event) => {
     event.preventDefault();
     setFieldError('meeting-title-input', 'err-meeting-title', '');
+    setFieldError('meeting-admission-deadline-input', 'err-meeting-deadline', '');
     const title = titleInput.value.trim();
     const scheduledVal = document.getElementById('meeting-scheduled-input').value;
+    const deadlineVal = document.getElementById('meeting-admission-deadline-input')?.value;
 
     if (title.length < 2) {
       setFieldError('meeting-title-input', 'err-meeting-title', 'Enter a meeting title (at least 2 characters).');
+      return;
+    }
+
+    if (scheduledVal && deadlineVal && new Date(deadlineVal) <= new Date(scheduledVal)) {
+      setFieldError(
+        'meeting-admission-deadline-input',
+        'err-meeting-deadline',
+        'Admission deadline must be after the scheduled start time.',
+      );
       return;
     }
 
@@ -283,6 +306,9 @@ function initCreateModal() {
       const payload = { title };
       if (scheduledVal) {
         payload.scheduled_at = new Date(scheduledVal).toISOString();
+      }
+      if (deadlineVal) {
+        payload.admission_deadline = new Date(deadlineVal).toISOString();
       }
       const meeting = await apiRequest('/meetings/', {
         method: 'POST',
@@ -335,14 +361,10 @@ async function initDashboard() {
       showToast('Enter a valid meeting ID.', 'warning');
       return;
     }
-    try {
-      await apiRequest(`/meetings/${encodeURIComponent(code)}/`);
-      window.location.href = `/meeting/${encodeURIComponent(code)}/`;
-    } catch (err) {
-      showToast(err.message || 'Meeting not found.', 'error');
-    }
+    window.location.href = `/meeting/${encodeURIComponent(code)}/`;
   });
 
+  recordsModal = initMeetingRecordsModal();
   initCreateModal();
   await loadDashboard();
 

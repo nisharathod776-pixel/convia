@@ -22,15 +22,37 @@ def test_meeting_lifecycle_and_permissions():
     code = create_res.data["meeting_code"]
     assert code.startswith("avr-")
     assert create_res.data["is_host"] is True
+    assert host_client.get(f"/api/v1/meetings/{code}/").status_code == 200
+    assert guest_client.get(f"/api/v1/meetings/{code}/").status_code == 403
 
     # Guest cannot access ICE config before joining
     ice_denied = guest_client.get(f"/api/v1/meetings/{code}/ice-servers/")
     assert ice_denied.status_code == 403
 
-    # Guest joins meeting
+    # Guest joins meeting -> placed in waiting room (202)
+    waiting_res = guest_client.post(f"/api/v1/meetings/{code}/join/")
+    assert waiting_res.status_code == 202
+    assert waiting_res.data["admission_status"] == "waiting"
+
+    # Guest still cannot access ICE config while waiting
+    ice_waiting = guest_client.get(f"/api/v1/meetings/{code}/ice-servers/")
+    assert ice_waiting.status_code == 403
+
+    # Host admits guest
+    admit_res = host_client.post(
+        f"/api/v1/meetings/{code}/admissions/",
+        {"user_id": guest.id, "decision": "admit"},
+        format="json",
+    )
+    assert admit_res.status_code == 200
+    assert admit_res.data["admission_status"] == "admitted"
+
+    # Admitted guest enters meeting
     join_res = guest_client.post(f"/api/v1/meetings/{code}/join/")
     assert join_res.status_code == 200
+    assert join_res.data["admission_status"] == "admitted"
     assert len(join_res.data["participants"]) == 2
+    assert guest_client.get(f"/api/v1/meetings/{code}/").status_code == 200
 
     # Guest now authorized for ICE servers
     ice_ok = guest_client.get(f"/api/v1/meetings/{code}/ice-servers/")

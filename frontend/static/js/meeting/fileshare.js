@@ -1,12 +1,13 @@
 import { ALLOWED_FILE_EXTENSIONS, MAX_UPLOAD_BYTES } from '../core/config.js';
 import { apiRequest, getAccessToken, uploadWithProgress } from '../core/api.js';
-import { formatBytes, formatDateTime, showToast } from '../core/ui.js';
+import { downloadBlobUrl, formatBytes, formatDateTime, showToast } from '../core/ui.js';
 
 export class MeetingFileShare {
   constructor(meetingCode, socketClient) {
     this.meetingCode = meetingCode;
     this.socketClient = socketClient;
     this.files = [];
+    this.canUpload = true;
 
     this.fileInput = document.getElementById('meeting-file-input');
     this.uploadBtn = document.getElementById('upload-file-btn');
@@ -16,6 +17,17 @@ export class MeetingFileShare {
     this.listEl = document.getElementById('shared-files-list');
 
     this.uploadBtn?.addEventListener('click', () => this.handleUpload());
+  }
+
+  setAllowStudentUpload(allowed, isTeacher = false) {
+    this.canUpload = Boolean(isTeacher || allowed);
+    if (this.fileInput) this.fileInput.disabled = !this.canUpload;
+    if (this.uploadBtn) this.uploadBtn.disabled = !this.canUpload;
+    if (this.statusText) {
+      this.statusText.textContent = this.canUpload
+        ? 'Allowed: PDF, images, docs, spreadsheets, archives (max 25 MB).'
+        : 'File uploads are restricted to the teacher by room policy.';
+    }
   }
 
   async loadFiles() {
@@ -50,6 +62,10 @@ export class MeetingFileShare {
   }
 
   async handleUpload() {
+    if (!this.canUpload) {
+      showToast('File uploads are restricted to the teacher by room policy.', 'warning');
+      return;
+    }
     const file = this.fileInput?.files?.[0];
     const validationErr = this.validateFile(file);
     if (validationErr) {
@@ -103,13 +119,7 @@ export class MeetingFileShare {
       }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileObj.original_name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      downloadBlobUrl(url, fileObj.original_name);
     } catch (err) {
       showToast(err.message, 'error');
     }

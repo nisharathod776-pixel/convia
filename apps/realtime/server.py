@@ -1,5 +1,6 @@
 import logging
 from asgiref.sync import sync_to_async
+from django.conf import settings
 from django.contrib.auth import get_user_model
 import socketio
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -8,7 +9,7 @@ logger = logging.getLogger("apps.realtime")
 
 sio = socketio.AsyncServer(
     async_mode="asgi",
-    cors_allowed_origins="*",
+    cors_allowed_origins=settings.CORS_ALLOWED_ORIGINS,
     ping_interval=25,
     ping_timeout=20,
 )

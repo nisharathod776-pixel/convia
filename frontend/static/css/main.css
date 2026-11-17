@@ -528,3 +528,41 @@ border-bottom-color: var(--accent-primary);
     transition-duration: 0.01ms !important;
   }
 }
+
+@media (max-width: 600px) {
+  .container {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .topbar-inner {
+    gap: 12px;
+    height: auto;
+    min-height: 60px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .mobile-drawer {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .modal-backdrop {
+    align-items: flex-start;
+    overflow-y: auto;
+    padding: 12px;
+  }
+
+  .modal-panel {
+    padding: 18px 16px;
+  }
+
+  .modal-footer {
+    flex-wrap: wrap;
+  }
+
+  .modal-footer .btn {
+    flex: 1 1 130px;
+  }
+}

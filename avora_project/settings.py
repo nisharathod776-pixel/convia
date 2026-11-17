@@ -12,6 +12,21 @@ load_dotenv(BASE_DIR / ".env")
 
 DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() in ("1", "true", "yes")
 
+
+def _configured_origins(env_name, default):
+    configured = os.getenv(env_name, "").strip()
+    if not configured and not default:
+        raise RuntimeError(f"{env_name} must be explicitly configured when DEBUG is False.")
+    origins = [
+        origin.strip()
+        for origin in (configured or default).split(",")
+        if origin.strip()
+    ]
+    if "*" in origins:
+        raise RuntimeError(f"{env_name} must list explicit origins; wildcard origins are not allowed.")
+    return origins
+
+
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "")
 if not SECRET_KEY:
     if DEBUG:
@@ -19,11 +34,16 @@ if not SECRET_KEY:
     else:
         raise RuntimeError("DJANGO_SECRET_KEY environment variable is required when DEBUG is False.")
 
+configured_hosts = os.getenv("DJANGO_ALLOWED_HOSTS", "").strip()
+if not DEBUG and not configured_hosts:
+    raise RuntimeError("DJANGO_ALLOWED_HOSTS must be explicitly configured when DEBUG is False.")
 ALLOWED_HOSTS = [
     h.strip()
-    for h in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,*").split(",")
+    for h in (configured_hosts or "localhost,127.0.0.1,*").split(",")
     if h.strip()
 ]
+if not DEBUG and "*" in ALLOWED_HOSTS:
+    raise RuntimeError("DJANGO_ALLOWED_HOSTS must not contain a wildcard when DEBUG is False.")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -148,18 +168,16 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-CORS_ALLOWED_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
-    if origin.strip()
-]
+CORS_ALLOWED_ORIGINS = _configured_origins(
+    "CORS_ALLOWED_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000" if DEBUG else "",
+)
 CORS_ALLOW_CREDENTIALS = True
 
-CSRF_TRUSTED_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
-    if origin.strip()
-]
+CSRF_TRUSTED_ORIGINS = _configured_origins(
+    "CSRF_TRUSTED_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000" if DEBUG else "",
+)
 
 # WebRTC STUN/TURN Configuration (read from environment, never hardcoded in frontend)
 STUN_URLS = [
@@ -173,6 +191,9 @@ TURN_CREDENTIAL = os.getenv("TURN_CREDENTIAL", "").strip()
 
 MAX_UPLOAD_SIZE_MB = int(os.getenv("MAX_UPLOAD_SIZE_MB", "25"))
 MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024
+
+MAX_RECORDING_SIZE_MB = int(os.getenv("MAX_RECORDING_SIZE_MB", "200"))
+MAX_RECORDING_SIZE_BYTES = MAX_RECORDING_SIZE_MB * 1024 * 1024
 
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

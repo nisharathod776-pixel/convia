@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.meetings.models import ActivityLog, Meeting
-from apps.meetings.permissions import is_meeting_member
+from apps.meetings.permissions import is_meeting_member, is_meeting_teacher, is_platform_admin
 from .models import SharedFile
 from .serializers import SharedFileSerializer
 from .validators import validate_uploaded_file
@@ -31,6 +31,11 @@ class MeetingFilesView(APIView):
         meeting = get_object_or_404(Meeting, meeting_code=meeting_code.lower())
         if not is_meeting_member(request.user, meeting):
             return Response({"detail": "Only meeting participants can upload files."}, status=status.HTTP_403_FORBIDDEN)
+        if not meeting.allow_student_file_share and not is_meeting_teacher(request.user, meeting):
+            return Response(
+                {"detail": "File sharing has been restricted to the teacher."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         if meeting.status == Meeting.STATUS_ENDED:
             return Response({"detail": "Cannot upload files to an ended meeting."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -59,7 +64,7 @@ class FileDownloadView(APIView):
 
     def get(self, request, file_id):
         shared = get_object_or_404(SharedFile.objects.select_related("meeting"), id=file_id)
-        if not is_meeting_member(request.user, shared.meeting):
+        if not (is_meeting_member(request.user, shared.meeting) or is_platform_admin(request.user)):
             return Response({"detail": "You are not authorized to download this file."}, status=status.HTTP_403_FORBIDDEN)
 
         if not shared.file or not shared.file.storage.exists(shared.file.name):

@@ -122,11 +122,46 @@
         <label for="meeting-scheduled-input" class="form-label">Scheduled Time (Optional — leave blank to start now)</label>
         <input type="datetime-local" id="meeting-scheduled-input" class="form-control" />
       </div>
+      <div class="form-group">
+        <label for="meeting-admission-deadline-input" class="form-label">Admission Deadline (Optional — cutoff for new student joins)</label>
+        <input type="datetime-local" id="meeting-admission-deadline-input" class="form-control" />
+        <span class="field-error" id="err-meeting-deadline"></span>
+      </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" id="cancel-create-modal-btn">Cancel</button>
         <button type="submit" id="create-meeting-submit-btn" class="btn btn-primary">Create &amp; Enter Room</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- Attendance & Recordings Modal -->
+<div id="meeting-records-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="records-modal-title">
+  <div class="modal-panel modal-panel-wide">
+    <div class="modal-header">
+      <div>
+        <h2 id="records-modal-title" class="modal-title">Meeting Records</h2>
+        <div id="records-modal-subtitle" class="field-hint mono"></div>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" id="close-records-modal-btn" aria-label="Close modal">Close</button>
+    </div>
+
+    <div class="records-modal-toolbar">
+      <div class="segmented-bar" role="tablist" aria-label="Meeting records sections">
+        <button type="button" class="segmented-btn is-active" data-records-tab="attendance">Attendance</button>
+        <button type="button" class="segmented-btn" data-records-tab="recordings">Recordings</button>
+      </div>
+      <button type="button" id="records-export-csv-btn" class="btn btn-secondary btn-sm hidden">Export Attendance CSV</button>
+    </div>
+
+    <div id="records-attendance-panel">
+      <div id="records-attendance-summary" class="records-summary-grid"></div>
+      <div id="records-attendance-body" class="table-wrap"></div>
+    </div>
+
+    <div id="records-recordings-panel" class="hidden">
+      <div id="records-recordings-body"></div>
+    </div>
   </div>
 </div>
 {% endblock %}

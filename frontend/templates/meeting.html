@@ -21,6 +21,12 @@
     </div>
 
     <div class="meeting-header-right">
+      <span class="recording-pill hidden" id="recording-status-pill" role="status">
+        <span class="rec-dot" aria-hidden="true"></span>
+        <span id="recording-status-label">REC</span>
+      </span>
+      <span class="breakout-pill hidden" id="breakout-status-pill">Breakout Room</span>
+      <span class="role-badge hidden" id="room-role-badge">Participant</span>
       <div class="connection-state" id="socket-status-wrap">
         <span class="live-indicator" id="socket-indicator"></span>
         <span id="socket-status-text">Connecting...</span>
@@ -28,6 +34,19 @@
       <button type="button" id="copy-invite-btn" class="ctrl-btn">Copy Invite Link</button>
     </div>
   </header>
+
+  <!-- Waiting Room / Admission Gate Overlay -->
+  <div id="admission-gate-overlay" class="admission-gate-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="admission-gate-title">
+    <div class="admission-gate-card">
+      <div class="admission-gate-spinner" id="admission-gate-spinner" aria-hidden="true"></div>
+      <h2 id="admission-gate-title" class="admission-gate-title">Joining Meeting…</h2>
+      <p id="admission-gate-message" class="admission-gate-message">Checking meeting admission status…</p>
+      <p id="admission-gate-meta" class="admission-gate-meta hidden"></p>
+      <div class="admission-gate-actions">
+        <button type="button" id="admission-leave-btn" class="btn btn-secondary">Back to Dashboard</button>
+      </div>
+    </div>
+  </div>
 
   <div class="meeting-workspace" id="meeting-workspace">
     <main class="meeting-stage">
@@ -39,6 +58,14 @@
         <div class="meeting-meta tabular-nums" id="participant-count-label">1 participant</div>
       </div>
 
+      <div id="breakout-banner" class="breakout-banner hidden" role="status">
+        <div class="breakout-banner-info">
+          <strong id="breakout-banner-title">Breakout Room</strong>
+          <span class="meeting-meta tabular-nums" id="breakout-timer-badge"></span>
+        </div>
+        <button type="button" id="return-to-main-btn" class="btn btn-secondary btn-sm">Return to Main Room</button>
+      </div>
+
       <!-- Multi-Participant Video Grid -->
       <section id="video-stage" class="video-grid" aria-label="Video participants">
         <article class="video-tile" id="local-video-tile">
@@ -47,6 +74,7 @@
             <div class="avatar-circle" id="local-avatar-initials">YO</div>
             <span id="local-fallback-name">You</span>
           </div>
+          <span class="video-hand-badge hidden" id="local-hand-badge">✋ Hand Raised</span>
           <div class="video-overlay-bar">
             <span class="video-participant-name" id="local-name-label">You</span>
             <span class="video-media-flags" id="local-flags-label">Mic On · Cam On</span>
@@ -111,6 +139,10 @@
           </section>
         </div>
 
+        <div id="wb-readonly-banner" class="wb-readonly-banner hidden" role="status">
+          Read-Only Mode — Viewing teacher's whiteboard in real time.
+        </div>
+
         <div class="wb-canvas-wrap" id="wb-canvas-wrap">
           <canvas id="whiteboard-canvas" tabindex="0" aria-label="Whiteboard drawing area"></canvas>
           <canvas id="whiteboard-preview" class="wb-preview-canvas" aria-hidden="true"></canvas>
@@ -119,18 +151,82 @@
       </section>
     </main>
 
-    <!-- Collapsible Side Drawer: Participants & File Sharing -->
+    <!-- Collapsible Side Drawer: Participants, Files, Chat, Breakouts, Attendance & Recordings -->
     <aside class="meeting-drawer hidden" id="meeting-drawer" aria-label="Meeting sidebar" aria-hidden="true">
       <div class="drawer-header">
         <div class="drawer-tabs">
           <button type="button" class="drawer-tab is-active" data-drawer-tab="participants">Participants</button>
-          <button type="button" class="drawer-tab" data-drawer-tab="files">Shared Files</button>
+          <button type="button" class="drawer-tab" data-drawer-tab="files">Files</button>
           <button type="button" class="drawer-tab" data-drawer-tab="chat">Chat</button>
+          <button type="button" class="drawer-tab" data-drawer-tab="breakouts">Breakouts</button>
+          <button type="button" class="drawer-tab" data-drawer-tab="attendance">Attendance</button>
+          <button type="button" class="drawer-tab" data-drawer-tab="recordings">Recordings</button>
         </div>
         <button type="button" class="wb-btn" id="close-drawer-btn" aria-label="Close drawer">Close</button>
       </div>
 
       <div class="drawer-body" id="drawer-participants-panel">
+        <section id="teacher-controls-panel" class="teacher-panel hidden" aria-label="Teacher Host Controls">
+          <div class="teacher-panel-section" id="waiting-room-section">
+            <div class="teacher-panel-heading">
+              <h3>Waiting Room</h3>
+              <span class="waiting-count-pill" id="waiting-room-count">0</span>
+            </div>
+            <div id="waiting-room-list" class="waiting-room-list">
+              <p class="meeting-meta">No pending admission requests.</p>
+            </div>
+          </div>
+
+          <div class="teacher-panel-section">
+            <div class="teacher-panel-heading">
+              <h3>Classroom Permissions</h3>
+            </div>
+            <label class="perm-toggle-row" for="perm-wb-student-toggle">
+              <span>Allow students to draw on whiteboard</span>
+              <input type="checkbox" id="perm-wb-student-toggle" />
+            </label>
+            <label class="perm-toggle-row" for="perm-student-screenshare-toggle">
+              <span>Allow students to share screen</span>
+              <input type="checkbox" id="perm-student-screenshare-toggle" />
+            </label>
+            <label class="perm-toggle-row" for="perm-mic-toggle">
+              <span>Allow students to use microphone</span>
+              <input type="checkbox" id="perm-mic-toggle" checked />
+            </label>
+            <label class="perm-toggle-row" for="perm-cam-toggle">
+              <span>Allow students to use camera</span>
+              <input type="checkbox" id="perm-cam-toggle" checked />
+            </label>
+            <label class="perm-toggle-row" for="perm-fileshare-toggle">
+              <span>Allow students to share files</span>
+              <input type="checkbox" id="perm-fileshare-toggle" checked />
+            </label>
+            <div class="perm-select-row">
+              <label for="perm-chat-mode-select">Chat Permissions</label>
+              <select id="perm-chat-mode-select" class="perm-select-input">
+                <option value="everyone">Everyone Can Chat</option>
+                <option value="teacher_only">Teacher Only</option>
+                <option value="disabled">Chat Disabled</option>
+              </select>
+            </div>
+            <div class="perm-bulk-actions">
+              <button type="button" id="btn-mute-all-mics" class="btn btn-secondary btn-sm">Mute All Mics</button>
+              <button type="button" id="btn-disable-all-cams" class="btn btn-secondary btn-sm">Disable All Cams</button>
+            </div>
+            <button type="button" id="teacher-stop-screenshare-btn" class="btn btn-danger btn-sm hidden">
+              Stop Student Screen Share
+            </button>
+            <div class="perm-deadline-box">
+              <label for="perm-admission-deadline-input" class="meeting-meta">Admission Deadline</label>
+              <input type="datetime-local" id="perm-admission-deadline-input" class="perm-datetime-input" />
+              <div class="perm-deadline-actions">
+                <button type="button" id="perm-save-deadline-btn" class="btn btn-primary btn-sm">Save</button>
+                <button type="button" id="perm-clear-deadline-btn" class="btn btn-secondary btn-sm">Clear</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <div id="participants-list"></div>
       </div>
 
@@ -154,12 +250,97 @@
           <button type="button" class="wb-btn" id="close-chat-btn" aria-label="Close chat panel">Close</button>
         </div>
         <div class="chat-connection-status" id="chat-connection-status" role="status">Connecting…</div>
+        <div class="chat-restriction-banner hidden" id="chat-restriction-banner" role="status"></div>
         <div class="chat-messages" id="chat-messages" role="log" aria-live="polite" aria-relevant="additions"></div>
         <form class="chat-form" id="chat-form">
           <label class="sr-only" for="chat-message-input">Message</label>
           <input id="chat-message-input" type="text" maxlength="2000" autocomplete="off" placeholder="Write a message…" />
           <button type="submit" class="btn btn-primary btn-sm" id="chat-send-btn" disabled>Send</button>
         </form>
+      </div>
+
+      <div class="drawer-body hidden" id="drawer-breakouts-panel">
+        <section id="teacher-breakout-controls" class="teacher-panel-section hidden">
+          <div class="teacher-panel-heading">
+            <h3>Breakout Room Manager</h3>
+          </div>
+          <div class="breakout-create-grid">
+            <div>
+              <label for="breakout-count-input" class="meeting-meta">Rooms</label>
+              <input type="number" id="breakout-count-input" class="perm-datetime-input" min="1" max="20" value="2" />
+            </div>
+            <div>
+              <label for="breakout-duration-input" class="meeting-meta">Minutes (opt)</label>
+              <input type="number" id="breakout-duration-input" class="perm-datetime-input" min="1" max="240" placeholder="15" />
+            </div>
+          </div>
+          <label class="perm-toggle-row" for="breakout-allow-return-toggle">
+            <span>Allow students to return to main room</span>
+            <input type="checkbox" id="breakout-allow-return-toggle" checked />
+          </label>
+          <div class="perm-bulk-actions">
+            <button type="button" id="breakout-create-btn" class="btn btn-primary btn-sm">Create Rooms</button>
+            <button type="button" id="breakout-auto-assign-btn" class="btn btn-secondary btn-sm">Auto-Assign</button>
+          </div>
+          <div class="perm-bulk-actions">
+            <button type="button" id="breakout-open-all-btn" class="btn btn-primary btn-sm">Open All Rooms</button>
+            <button type="button" id="breakout-close-all-btn" class="btn btn-danger btn-sm">Close All Rooms</button>
+          </div>
+          <div class="breakout-broadcast-row">
+            <input type="text" id="breakout-broadcast-input" class="perm-datetime-input" maxlength="500" placeholder="Broadcast announcement to rooms…" />
+            <button type="button" id="breakout-broadcast-btn" class="btn btn-secondary btn-sm">Send</button>
+          </div>
+        </section>
+
+        <div id="breakout-rooms-list" class="breakout-rooms-list">
+          <p class="meeting-meta">No breakout rooms created yet.</p>
+        </div>
+      </div>
+
+      <div class="drawer-body hidden" id="drawer-attendance-panel">
+        <div class="teacher-panel-section">
+          <div class="teacher-panel-heading">
+            <h3>Attendance</h3>
+            <div class="perm-deadline-actions">
+              <button type="button" id="refresh-attendance-btn" class="btn btn-secondary btn-sm">Refresh</button>
+              <button type="button" id="export-attendance-btn" class="btn btn-primary btn-sm hidden">Export CSV</button>
+            </div>
+          </div>
+          <div id="attendance-summary-grid" class="attendance-summary-grid"></div>
+        </div>
+        <div id="attendance-records-list" class="attendance-records-list">
+          <p class="meeting-meta">Loading attendance records…</p>
+        </div>
+      </div>
+
+      <div class="drawer-body hidden" id="drawer-recordings-panel">
+        <section id="teacher-recording-controls" class="teacher-panel-section hidden">
+          <div class="teacher-panel-heading">
+            <h3>Session Recording</h3>
+            <span class="meeting-meta tabular-nums" id="rec-elapsed-label">00:00</span>
+          </div>
+          <div class="perm-select-row">
+            <label for="rec-visibility-select">Saved Visibility</label>
+            <select id="rec-visibility-select" class="perm-select-input">
+              <option value="teacher_only">Teacher Only</option>
+              <option value="participants">Teacher &amp; Participants</option>
+            </select>
+          </div>
+          <div class="perm-bulk-actions">
+            <button type="button" id="panel-start-rec-btn" class="btn btn-primary btn-sm">Start Screen+Audio Rec</button>
+            <button type="button" id="panel-start-audio-rec-btn" class="btn btn-secondary btn-sm">Audio-Only Rec</button>
+            <button type="button" id="panel-stop-rec-btn" class="btn btn-danger btn-sm hidden">Stop &amp; Save</button>
+          </div>
+          <div class="upload-progress-track hidden" id="rec-upload-progress-track">
+            <div class="upload-progress-fill" id="rec-upload-progress-fill"></div>
+          </div>
+          <div id="rec-status-note" class="meeting-meta">Captures meeting tab video and mixed WebRTC participant audio as WebM.</div>
+          <button type="button" id="rec-upload-retry-btn" class="btn btn-secondary btn-sm hidden">Retry Upload</button>
+        </section>
+
+        <div id="recordings-list" class="recordings-list">
+          <p class="meeting-meta">No recordings saved for this meeting yet.</p>
+        </div>
       </div>
     </aside>
   </div>
@@ -178,8 +359,12 @@
       <button type="button" id="toggle-wb-btn" class="ctrl-btn">
         <span class="ctrl-label">Whiteboard</span>
       </button>
+      <button type="button" id="toggle-hand-btn" class="ctrl-btn">
+        <span class="ctrl-label" id="hand-btn-label">Raise Hand</span>
+      </button>
       <button type="button" id="toggle-participants-btn" class="ctrl-btn">
         <span class="ctrl-label">Participants</span>
+        <span class="ctrl-badge hidden" id="waiting-badge">0</span>
       </button>
       <button type="button" id="toggle-files-btn" class="ctrl-btn">
         <span class="ctrl-label">Files</span>
@@ -187,11 +372,17 @@
       <button type="button" id="toggle-chat-btn" class="ctrl-btn" aria-controls="meeting-drawer" aria-expanded="false">
         <span class="ctrl-label">Chat</span>
       </button>
+      <button type="button" id="toggle-breakouts-btn" class="ctrl-btn">
+        <span class="ctrl-label">Breakouts</span>
+      </button>
+      <button type="button" id="toggle-record-btn" class="ctrl-btn hidden">
+        <span class="ctrl-label" id="record-btn-label">Record</span>
+      </button>
     </div>
 
     <div class="controls-center">
       <button type="button" id="leave-meeting-btn" class="ctrl-btn">Leave Meeting</button>
-      <button type="button" id="end-meeting-btn" class="ctrl-btn is-danger hidden">End Meeting</button>
+      <button type="button" id="end-meeting-btn" class="ctrl-btn is-danger">End Meeting</button>
     </div>
   </footer>
 </div>

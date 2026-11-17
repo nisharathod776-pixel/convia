@@ -13,6 +13,13 @@ class WhiteboardOperation(models.Model):
     ]
 
     meeting = models.ForeignKey(Meeting, on_delete=models.CASCADE, related_name="whiteboard_operations")
+    breakout_room = models.ForeignKey(
+        "meetings.BreakoutRoom",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="whiteboard_operations",
+    )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

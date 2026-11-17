@@ -325,3 +325,159 @@
     padding: 20px 16px;
   }
 }
+
+@media (max-width: 600px) {
+  .app-sidebar {
+    padding: 12px;
+  }
+
+  .sidebar-nav {
+    padding-bottom: 4px;
+  }
+
+  .workspace-topbar {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .workspace-content {
+    width: 100%;
+    gap: 22px;
+  }
+
+  .panel-card {
+    min-width: 0;
+    padding: 16px;
+  }
+
+  .panel-header {
+    align-items: stretch;
+  }
+
+  .segmented-bar {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .inline-join-form .form-control {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+
+  .inline-join-form .btn {
+    width: 100%;
+  }
+
+  .admin-user-filters {
+    flex-basis: 100%;
+  }
+
+  .admin-user-filters .form-control {
+    flex: 1 1 100%;
+    min-width: 0;
+    max-width: none !important;
+  }
+
+  .records-modal-toolbar {
+    align-items: stretch;
+  }
+}
+
+/* Meeting Attendance & Recordings Modal */
+.modal-panel-wide {
+  max-width: 820px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.records-modal-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.records-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.records-summary-card {
+  background-color: var(--bg-canvas);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.records-summary-label {
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+.records-summary-value {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--ink-primary);
+}
+
+.records-inline-edit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.records-inline-edit .form-control {
+  min-height: 32px;
+  padding: 4px 8px;
+  font-size: 0.8125rem;
+  width: auto;
+}
+
+.rec-card {
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  background-color: var(--bg-canvas);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rec-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rec-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.rec-player {
+  width: 100%;
+  max-height: 320px;
+  border-radius: var(--radius-sm);
+  background: #0F172A;
+}
+
+.rec-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
