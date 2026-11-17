@@ -937,21 +937,38 @@ class MeetingBreakoutDetailView(APIView):
 
     def delete(self, request, meeting_code, breakout_id):
         with transaction.atomic():
-            meeting = get_object_or_404(Meeting, meeting_code=meeting_code.lower())
+            meeting = get_object_or_404(
+                Meeting.objects.select_for_update(),
+                meeting_code=meeting_code.lower(),
+            )
+
             if not is_meeting_teacher(request.user, meeting):
                 return Response(
                     {"detail": "Only the meeting teacher can delete breakout rooms."},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-            room = get_object_or_404(BreakoutRoom.objects.select_for_update(), id=breakout_id, meeting=meeting)
+
+            room = get_object_or_404(
+                BreakoutRoom.objects.select_for_update(),
+                id=breakout_id,
+                meeting=meeting,
+            )
+
             if room.status == BreakoutRoom.STATUS_OPEN:
                 return Response(
-                    {"detail": "Close active breakout rooms before deleting."},
+                    {"detail": "Close the breakout room before deleting it."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            MeetingParticipant.objects.filter(meeting=meeting, current_breakout=room).update(current_breakout=None)
+
+            if room.assigned_participants.exists():
+                return Response(
+                    {"detail": "Unassign all participants before deleting this room."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             room.delete()
             return Response({"detail": "Breakout room deleted."})
+
 
 
 class MeetingBreakoutActionView(APIView):

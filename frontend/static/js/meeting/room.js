@@ -607,6 +607,41 @@ async function initMeetingRoom() {
         btnWrap.appendChild(joinBtn);
       }
 
+      if (isTeacher) {
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'btn btn-danger btn-sm';
+        removeBtn.textContent = 'Remove';
+
+        const hasAssignedUsers = (room.assigned_users || []).length > 0;
+        const canRemove = room.status !== 'open' && !hasAssignedUsers;
+
+        removeBtn.disabled = !canRemove;
+        removeBtn.title = !canRemove
+          ? 'Close the room and unassign all participants before removing it.'
+          : 'Remove this breakout room';
+
+        removeBtn.addEventListener('click', async () => {
+          if (!confirm(`Are you sure you want to remove "${room.name}"?`)) {
+            return;
+          }
+
+          try {
+            await apiRequest(
+              `/meetings/${encodeURIComponent(meetingCode)}/breakouts/${encodeURIComponent(room.id)}/`,
+              { method: 'DELETE' }
+            );
+
+            await loadBreakoutsFromRest();
+            showToast('Breakout room removed.', 'success');
+          } catch (err) {
+            showToast(err.message || 'Could not remove breakout room.', 'error');
+          }
+        });
+
+        btnWrap.appendChild(removeBtn);
+      }
+
       header.append(titleWrap, btnWrap);
       card.appendChild(header);
 
@@ -966,11 +1001,7 @@ async function initMeetingRoom() {
     }
     currentPerms = { ...currentPerms, ...perms };
     const roleBadge = document.getElementById('room-role-badge');
-    if (roleBadge) {
-      roleBadge.textContent = isTeacher ? 'Teacher' : 'Student';
-      roleBadge.classList.toggle('is-teacher', isTeacher);
-      roleBadge.classList.remove('hidden');
-    }
+    roleBadge?.classList.add('hidden');
 
     document.getElementById('end-meeting-btn')?.classList.toggle('hidden', !isTeacher);
     document.getElementById('teacher-controls-panel')?.classList.toggle('hidden', !isTeacher);

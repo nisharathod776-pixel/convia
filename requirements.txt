@@ -1,7 +1,8 @@
-Django>=5.1,<5.2
-djangorestframework>=3.15,<3.16
-djangorestframework-simplejwt>=5.3,<5.5
-django-cors-headers>=4.4,<4.7
+
+Django>=5.2,<5.3
+djangorestframework>=3.16,<3.19
+djangorestframework-simplejwt>=5.5.1,<5.6
+django-cors-headers>=4.7,<5.0
 python-socketio>=5.11,<5.13
 uvicorn[standard]>=0.30,<0.35
 python-dotenv>=1.0,<1.2

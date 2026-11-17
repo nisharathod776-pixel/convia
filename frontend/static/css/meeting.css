@@ -1197,6 +1197,43 @@ body.meeting-body {
   gap: 8px;
 }
 
+
+/* Breakout room header layout */
+.breakout-card-header {
+  align-items: flex-start;
+}
+
+.breakout-card-header > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.breakout-card-header > div:last-child {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.breakout-card-header > div:last-child button {
+  white-space: nowrap;
+  min-width: 115px;
+}
+
+/* Better layout on smaller screens */
+@media (max-width: 640px) {
+  .breakout-card-header {
+    flex-wrap: wrap;
+  }
+
+  .breakout-card-header > div:last-child {
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+}
+
 .breakout-assigned-row {
   display: flex;
   align-items: center;
