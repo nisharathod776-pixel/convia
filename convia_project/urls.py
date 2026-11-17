@@ -2,11 +2,11 @@ from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
 
-from avora_project import page_views
+from convia_project import page_views
 
 
 def health_check(request):
-    return JsonResponse({"status": "ok", "service": "avora"})
+    return JsonResponse({"status": "ok", "service": "convia"})
 
 
 urlpatterns = [

@@ -48,7 +48,7 @@ async def test_live_asgi_socketio_webrtc_signaling_and_whiteboard():
     outsider_token = str(outsider_refresh.access_token)
 
     port = _free_port()
-    from avora_project.asgi import application
+    from convia_project.asgi import application
 
     config = uvicorn.Config(application, host="127.0.0.1", port=port, log_level="error")
     server = uvicorn.Server(config)

@@ -8,7 +8,7 @@ CONVIA is a full-stack real-time video conferencing and collaboration web applic
 
 - **Frontend:** Pure HTML5 templates, CSS3 design system (`frontend/static/css/`), Vanilla ES6+ JavaScript modules (`frontend/static/js/`), HTML5 Canvas 2D API, and vendored Socket.IO v4 client (`frontend/static/vendor/socket.io.min.js`).
 - **Backend:** Python 3.11, Django 5.1, Django REST Framework, `djangorestframework-simplejwt` (JWT access & rotated/blacklisted refresh tokens).
-- **Real-Time Transport:** `python-socketio` (`AsyncServer`) mounted alongside Django's ASGI application (`avora_project/asgi.py`) and served by Uvicorn.
+- **Real-Time Transport:** `python-socketio` (`AsyncServer`) mounted alongside Django's ASGI application (`convia_project/asgi.py`) and served by Uvicorn.
 - **Video / Audio / Screen Share:** Browser WebRTC (`RTCPeerConnection`, `getUserMedia`, `getDisplayMedia`) with server-provided STUN/TURN configuration.
 - **Meeting Collaboration:** Room-scoped live chat and a synchronized whiteboard with colored drawing, erasing, and shape tools. Whiteboard operations are stored for late joiners; chat messages are live only.
 - **Database:** SQLite (with WAL mode enabled for concurrent ASGI access) out of the box, PostgreSQL-ready via `DATABASE_URL` (`dj-database-url` + `psycopg`).
@@ -44,7 +44,7 @@ CONVIA is a full-stack real-time video conferencing and collaboration web applic
 
 5. **Run the unified Django + Socket.IO ASGI server:**
    ```bash
-   uvicorn avora_project.asgi:application --host 0.0.0.0 --port 3000
+   uvicorn convia_project.asgi:application --host 0.0.0.0 --port 3000
    ```
    Open `http://localhost:3000` in your browser.
 

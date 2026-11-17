@@ -30,7 +30,7 @@ def _configured_origins(env_name, default):
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "")
 if not SECRET_KEY:
     if DEBUG:
-        SECRET_KEY = "django-insecure-avora-local-dev-key-change-in-production"
+        SECRET_KEY = "django-insecure-convia-local-dev-key-change-in-production"
     else:
         raise RuntimeError("DJANGO_SECRET_KEY environment variable is required when DEBUG is False.")
 
@@ -75,7 +75,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
 ]
 
-ROOT_URLCONF = "avora_project.urls"
+ROOT_URLCONF = "convia_project.urls"
 
 TEMPLATES = [
     {
@@ -93,8 +93,8 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "avora_project.wsgi.application"
-ASGI_APPLICATION = "avora_project.asgi.application"
+WSGI_APPLICATION = "convia_project.wsgi.application"
+ASGI_APPLICATION = "convia_project.asgi.application"
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 if DATABASE_URL:

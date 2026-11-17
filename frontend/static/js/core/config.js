@@ -1,9 +1,9 @@
 export const API_BASE = '/api/v1';
 
 export const STORAGE_KEYS = {
-  ACCESS_TOKEN: 'avora_access_token',
-  REFRESH_TOKEN: 'avora_refresh_token',
-  USER: 'avora_user',
+  ACCESS_TOKEN: 'convia_access_token',
+  REFRESH_TOKEN: 'convia_refresh_token',
+  USER: 'convia_user',
 };
 
 export const ALLOWED_FILE_EXTENSIONS = [

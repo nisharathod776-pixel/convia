@@ -66,7 +66,7 @@ async def test_batch2_5_realtime_moderation_breakouts_attendance_and_recording()
     )
 
     port = _free_port()
-    from avora_project.asgi import application
+    from convia_project.asgi import application
 
     config = uvicorn.Config(application, host="127.0.0.1", port=port, log_level="error")
     server = uvicorn.Server(config)

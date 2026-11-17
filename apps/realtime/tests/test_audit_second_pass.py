@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from datetime import timedelta
 
-from avora_project.settings import _configured_origins
+from convia_project.settings import _configured_origins
 from apps.meetings.models import BreakoutRoom, Meeting, MeetingParticipant
 from apps.realtime.handlers_meeting import (
     _expire_breakouts_once,
