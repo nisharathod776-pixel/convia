@@ -381,115 +381,192 @@ class MeetingJoinView(APIView):
             return Response(data)
 
 
+
 class MeetingAdmissionsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, meeting_code):
-        meeting = get_object_or_404(Meeting, meeting_code=meeting_code.lower())
-        if not is_meeting_teacher(request.user, meeting):
+        meeting = get_object_or_404(
+            Meeting,
+            meeting_code=meeting_code.lower()
+        )
+
+        # Only the original Host can view admission requests.
+        if meeting.host_id != request.user.id:
             return Response(
-                {"detail": "Only the meeting teacher can view admission requests."},
+                {"detail": "Only the Host can view admission requests."},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        waiting = meeting.participants.filter(
-            admission_status=MeetingParticipant.ADMISSION_WAITING
-        ).select_related("user").order_by("requested_at", "joined_at")
-        return Response({"waiting_room": WaitingParticipantSerializer(waiting, many=True).data})
+
+        waiting = (
+            meeting.participants.filter(
+                admission_status=MeetingParticipant.ADMISSION_WAITING
+            )
+            .select_related("user")
+            .order_by("requested_at", "joined_at")
+        )
+
+        return Response({
+            "waiting_room": WaitingParticipantSerializer(
+                waiting,
+                many=True
+            ).data
+        })
 
     def post(self, request, meeting_code):
-        decision = str(request.data.get("decision", "")).strip().lower()
+        decision = str(
+            request.data.get("decision", "")
+        ).strip().lower()
+
         target_user_id = request.data.get("user_id")
+
         if decision not in ("admit", "reject"):
             return Response(
                 {"detail": "Field 'decision' must be 'admit' or 'reject'."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
         try:
             target_user_id = int(target_user_id)
         except (TypeError, ValueError):
-            return Response({"detail": "Valid integer 'user_id' is required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Valid integer 'user_id' is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         with transaction.atomic():
-            meeting = get_object_or_404(Meeting.objects.select_for_update(), meeting_code=meeting_code.lower())
-            if not is_meeting_teacher(request.user, meeting):
+            meeting = get_object_or_404(
+                Meeting.objects.select_for_update(),
+                meeting_code=meeting_code.lower()
+            )
+
+            # Only the original Host can manage admission requests.
+            if meeting.host_id != request.user.id:
                 ActivityLog.objects.create(
                     user=request.user,
                     action="unauthorized_admission_decision",
-                    detail=f"{meeting.meeting_code}: user_id={target_user_id} decision={decision}",
+                    detail=(
+                        f"{meeting.meeting_code}: "
+                        f"user_id={target_user_id} decision={decision}"
+                    ),
                 )
+
                 return Response(
-                    {"detail": "Only the meeting teacher can admit or reject students."},
+                    {"detail": "Only the Host can manage admission requests."},
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
             if meeting.status == Meeting.STATUS_ENDED:
-                return Response({"detail": "Meeting has already ended."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"detail": "Meeting has already ended."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             participant = (
                 MeetingParticipant.objects.select_for_update()
                 .select_related("user")
-                .filter(meeting=meeting, user_id=target_user_id)
+                .filter(
+                    meeting=meeting,
+                    user_id=target_user_id
+                )
                 .first()
             )
+
             if not participant:
                 return Response(
-                    {"detail": "Admission request not found for this user."},
+                    {"detail": "Admission request not found for this Participant."},
                     status=status.HTTP_404_NOT_FOUND,
                 )
+
             if participant.is_teacher:
                 return Response(
-                    {"detail": "Cannot modify admission status for the meeting teacher."},
+                    {"detail": "Cannot modify admission status for the Host."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+
             if participant.admission_status != MeetingParticipant.ADMISSION_WAITING:
                 return Response(
-                    {"detail": f"Request is already {participant.admission_status}."},
+                    {
+                        "detail": (
+                            f"Request is already "
+                            f"{participant.admission_status}."
+                        )
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
             now = timezone.now()
+
             if decision == "admit":
                 if meeting.status == Meeting.STATUS_SCHEDULED:
                     meeting.status = Meeting.STATUS_ACTIVE
                     meeting.save(update_fields=["status"])
-                participant.admission_status = MeetingParticipant.ADMISSION_ADMITTED
+
+                participant.admission_status = (
+                    MeetingParticipant.ADMISSION_ADMITTED
+                )
                 participant.is_active = True
                 participant.admitted_at = now
                 participant.left_at = None
                 participant.decision_by = request.user
+
                 participant.save(
-                    update_fields=["admission_status", "is_active", "admitted_at", "left_at", "decision_by"]
+                    update_fields=[
+                        "admission_status",
+                        "is_active",
+                        "admitted_at",
+                        "left_at",
+                        "decision_by",
+                    ]
                 )
+
                 ActivityLog.objects.create(
                     user=request.user,
                     action="admission_admitted",
                     detail=f"{meeting.meeting_code}: @{participant.user.username}",
                 )
+
             else:
-                participant.admission_status = MeetingParticipant.ADMISSION_REJECTED
+                participant.admission_status = (
+                    MeetingParticipant.ADMISSION_REJECTED
+                )
                 participant.is_active = False
                 participant.rejected_at = now
                 participant.decision_by = request.user
+
                 participant.save(
-                    update_fields=["admission_status", "is_active", "rejected_at", "decision_by"]
+                    update_fields=[
+                        "admission_status",
+                        "is_active",
+                        "rejected_at",
+                        "decision_by",
+                    ]
                 )
+
                 ActivityLog.objects.create(
                     user=request.user,
                     action="admission_rejected",
                     detail=f"{meeting.meeting_code}: @{participant.user.username}",
                 )
 
-            waiting_qs = meeting.participants.filter(
-                admission_status=MeetingParticipant.ADMISSION_WAITING
-            ).select_related("user").order_by("requested_at", "joined_at")
-            return Response(
-                {
-                    "participant": WaitingParticipantSerializer(participant).data,
-                    "admission_status": participant.admission_status,
-                    "waiting_room": WaitingParticipantSerializer(waiting_qs, many=True).data,
-                }
+            waiting_qs = (
+                meeting.participants.filter(
+                    admission_status=MeetingParticipant.ADMISSION_WAITING
+                )
+                .select_related("user")
+                .order_by("requested_at", "joined_at")
             )
 
+            return Response({
+                "participant": WaitingParticipantSerializer(
+                    participant
+                ).data,
+                "admission_status": participant.admission_status,
+                "waiting_room": WaitingParticipantSerializer(
+                    waiting_qs,
+                    many=True
+                ).data,
+            })
 
 class MeetingPermissionsView(APIView):
     permission_classes = [IsAuthenticated]

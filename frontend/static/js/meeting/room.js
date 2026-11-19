@@ -321,6 +321,7 @@ async function initMeetingRoom() {
   let whiteboard = null;
   let meeting = null;
   let isTeacher = false;
+  let isHost = false;
   let waitingPollTimer = null;
   let hasEnteredRoom = false;
 
@@ -1005,6 +1006,7 @@ async function initMeetingRoom() {
 
     document.getElementById('end-meeting-btn')?.classList.toggle('hidden', !isTeacher);
     document.getElementById('teacher-controls-panel')?.classList.toggle('hidden', !isTeacher);
+    document.getElementById('waiting-room-section')?.classList.toggle('hidden', !isHost);
     document.getElementById('teacher-breakout-controls')?.classList.toggle('hidden', !isTeacher);
     document.getElementById('teacher-recording-controls')?.classList.toggle('hidden', !isTeacher);
 
@@ -1079,18 +1081,25 @@ async function initMeetingRoom() {
     if (socketClient.emit('admission_decision', { user_id: targetUserId, decision })) {
       return;
     }
+
     try {
       const res = await apiRequest(`/meetings/${encodeURIComponent(meetingCode)}/admissions/`, {
         method: 'POST',
         body: JSON.stringify({ user_id: targetUserId, decision }),
       });
+
       renderWaitingRoomList(res.waiting_room || [], handleAdmissionDecision);
-      showToast(decision === 'admit' ? 'Student admitted.' : 'Admission request declined.', 'info');
+
+      showToast(
+        decision === 'admit'
+          ? 'Participant admitted.'
+          : 'Admission request declined.',
+        'info'
+      );
     } catch (err) {
       showToast(err.message || 'Unable to process admission decision.', 'error');
     }
   }
-
   async function sendPermissionUpdate(patch) {
     if (socketClient.emit('update_meeting_permissions', patch)) {
       return;
@@ -1347,12 +1356,13 @@ async function initMeetingRoom() {
       setSocketStatus('connected', false, true);
     },
     onWaitingRoomUpdated: (payload) => {
-      if (isTeacher) {
-        renderWaitingRoomList(payload?.waiting_room || [], handleAdmissionDecision);
+      if (isHost) {
+        renderWaitingRoomList(payload?.waiting_room || [],
+        handleAdmissionDecision);
       }
     },
     onAdmissionRequested: (payload) => {
-      if (isTeacher && payload?.message) {
+      if (isHost && payload?.message) {
         showToast(payload.message, 'info', 7000);
       }
     },
@@ -1377,18 +1387,16 @@ async function initMeetingRoom() {
         });
       }
     },
-    onAdmissionRejected: (payload) => {
+    onAdmissionRejected: () => {
       if (waitingPollTimer) {
         clearInterval(waitingPollTimer);
         waitingPollTimer = null;
       }
+
       socketClient.disconnect();
-      showAdmissionGate({
-        title: 'Admission Declined',
-        message: payload?.detail || 'Your admission request was declined by the teacher.',
-        isError: true,
-      });
+      window.location.replace('/dashboard/');
     },
+
     onParticipantRemoved: (payload) => {
       if (waitingPollTimer) {
         clearInterval(waitingPollTimer);
@@ -1402,7 +1410,9 @@ async function initMeetingRoom() {
         isError: true,
       });
     },
+
     onRoomJoined: async (payload) => {
+      isHost = Boolean(payload.is_host);
       setSocketStatus('connected', true, false);
       currentBreakoutId = payload.breakout_room_id || null;
       if (Array.isArray(payload.breakout_rooms)) {
@@ -1427,7 +1437,7 @@ async function initMeetingRoom() {
           onDelete: handleDeleteChatMessage,
         }));
       }
-      if (isTeacher && Array.isArray(payload.waiting_room)) {
+      if (isHost && Array.isArray(payload.waiting_room)) {
         renderWaitingRoomList(payload.waiting_room, handleAdmissionDecision);
       }
       if (peerManager) {
@@ -1939,11 +1949,20 @@ async function initMeetingRoom() {
           await enterAdmittedRoom(res);
         }
       } catch (pollErr) {
-        clearInterval(waitingPollTimer);
-        waitingPollTimer = null;
+        if (waitingPollTimer) {
+          clearInterval(waitingPollTimer);
+          waitingPollTimer = null;
+        }
+
         socketClient.disconnect();
+
+        if (pollErr.data?.code === 'admission_rejected') {
+          window.location.replace('/dashboard/');
+          return;
+        }
+
         showAdmissionGate({
-          title: pollErr.data?.code === 'admission_rejected' ? 'Admission Declined' : 'Unable to Join',
+          title: 'Unable to Join',
           message: pollErr.message || 'Unable to enter meeting.',
           isError: true,
         });

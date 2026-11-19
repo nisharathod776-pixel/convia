@@ -280,7 +280,7 @@ def _enter_meeting_and_load_state(meeting_id, user_id: int, is_teacher: bool):
         ]
 
         waiting_room = []
-        if is_teacher:
+        if meeting.host_id == user.id:
             waiting_qs = (
                 MeetingParticipant.objects.filter(
                     meeting_id=meeting_id,
@@ -409,13 +409,13 @@ def _process_admission_decision(meeting_code: str, teacher_id: int, target_user_
         meeting = Meeting.objects.select_for_update().filter(meeting_code=meeting_code.lower()).first()
         if not teacher or not meeting:
             return False, "Meeting not found.", []
-        if not is_meeting_teacher(teacher, meeting):
+        if meeting.host_id != teacher.id:
             ActivityLog.objects.create(
                 user=teacher,
                 action="unauthorized_admission_decision",
                 detail=f"{meeting.meeting_code}: target={target_user_id}",
             )
-            return False, "Only the meeting teacher can admit or reject students.", []
+            return False, "Only the Host can manage admission requests.", []
         if meeting.status == Meeting.STATUS_ENDED:
             return False, "Meeting has already ended.", []
 
@@ -504,7 +504,7 @@ def _update_permissions_db(meeting_code: str, teacher_id: int, data: dict):
                 action="unauthorized_permission_change",
                 detail=meeting.meeting_code,
             )
-            return False, "Only the meeting teacher can update permissions.", None, None
+            return False, "Only the meeting host can update permissions.", None, None
 
         updated_fields = []
         changes = []
@@ -1109,6 +1109,21 @@ def _teacher_sids_in_room(code: str) -> list[str]:
     ]
 
 
+def _host_sids_in_room(code: str) -> list[str]:
+    return [
+        peer_sid
+        for peer_sid, info in ROOM_PEERS.get(code, {}).items()
+        if info.get("is_host") is True
+    ]
+
+
+async def _emit_to_host(code: str, event: str, payload: dict):
+    for host_sid in _host_sids_in_room(code):
+        await sio.emit(event, payload, to=host_sid)
+
+
+
+
 async def _emit_to_teachers(code: str, event: str, payload: dict):
     for t_sid in _teacher_sids_in_room(code):
         await sio.emit(event, payload, to=t_sid)
@@ -1271,10 +1286,14 @@ async def join_waiting_room(sid, data):
         {"meeting_code": code, "admission_status": MeetingParticipant.ADMISSION_WAITING},
         to=sid,
     )
-    await _emit_to_teachers(code, "waiting_room_updated", {"meeting_code": code, "waiting_room": waiting_list})
+    await _emit_to_host(
+        code,
+        "waiting_room_updated",
+        {"meeting_code": code, "waiting_room": waiting_list},
+    )
     if not already_connected_for_user:
         display_name = user_data.get("full_name") or user_data["username"]
-        await _emit_to_teachers(
+        await _emit_to_host(
             code,
             "admission_requested",
             {
@@ -1282,8 +1301,7 @@ async def join_waiting_room(sid, data):
                 "user_id": user_data["user_id"],
                 "username": user_data["username"],
                 "full_name": display_name,
-                "message": f"Student {display_name} is requesting to join your meeting.",
-            },
+                "message": f"{display_name} is requesting to join the meeting.",            },
         )
 
 
@@ -1302,11 +1320,21 @@ async def leave_waiting_room(sid, data):
 @sio.event
 async def admission_decision(sid, data):
     data = data if isinstance(data, dict) else {}
-    code, user_data = await verify_teacher_in_room(sid, data.get("meeting_code"))
+    code, user_data = await verify_sid_in_room(sid, data.get("meeting_code"))
     if not code or not user_data:
         await sio.emit(
             "error_event",
-            {"message": "Only the meeting teacher can admit or reject students."},
+            {"message": "Unauthorized request."},
+            to=sid,
+        )
+        return
+
+    # Verify user is host
+    meeting = await sync_to_async(Meeting.objects.get)(meeting_code=code)
+    if meeting.host_id != user_data["user_id"]:
+        await sio.emit(
+            "error_event",
+            {"message": "Only the Host can admit or reject students."},
             to=sid,
         )
         return
@@ -1342,7 +1370,7 @@ async def admission_decision(sid, data):
                     "admission_rejected",
                     {
                         "meeting_code": code,
-                        "detail": "Your admission request was declined by the teacher.",
+                        "detail": "Your admission request was declined by the Host.",
                     },
                     to=target_sid,
                 )
@@ -1352,7 +1380,7 @@ async def admission_decision(sid, data):
                 target_session["waiting_rooms"].discard(code)
                 await sio.save_session(target_sid, target_session)
 
-        await _emit_to_teachers(code, "waiting_room_updated", {"meeting_code": code, "waiting_room": waiting_list})
+        await _emit_to_host(code, "waiting_room_updated", {"meeting_code": code, "waiting_room": waiting_list})
 
 
 @sio.event
@@ -1709,6 +1737,8 @@ async def join_meeting(sid, data):
         await sio.emit("error_event", {"message": err or "Unable to join room."}, to=sid)
         return
 
+    is_host = meeting.host_id == user_data["user_id"] if meeting else False
+
     if code in session.get("waiting_rooms", set()):
         session["waiting_rooms"].discard(code)
         await _remove_sid_from_waiting(sid, code)
@@ -1735,7 +1765,7 @@ async def join_meeting(sid, data):
         "user_id": user_data["user_id"],
         "username": user_data["username"],
         "full_name": user_data["full_name"],
-        "is_host": is_teacher,
+        "is_host": is_host,
         "meeting_role": meeting_role,
         "mic_enabled": not my_moderation["mic_locked"],
         "cam_enabled": False,
@@ -1758,7 +1788,7 @@ async def join_meeting(sid, data):
         "self_sid": sid,
         "meeting_code": code,
         "meeting_role": meeting_role,
-        "is_host": is_teacher,
+        "is_host": is_host,
         "permissions": permissions,
         "my_moderation": my_moderation,
         "breakout_room_id": breakout_room_id,

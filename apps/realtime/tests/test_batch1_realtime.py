@@ -210,7 +210,7 @@ async def test_batch1_waiting_room_admission_whiteboard_chat_and_screenshare_rea
         await c_s1.emit("join_waiting_room", {"meeting_code": meeting.meeting_code})
         await asyncio.wait_for(s1_wait_ev.wait(), timeout=5)
         await asyncio.wait_for(t_req_ev.wait(), timeout=5)
-        assert state["t_requests"][0]["message"] == "Student Student One is requesting to join your meeting."
+        assert state["t_requests"][0]["message"] == "Student One is requesting to join the meeting."
 
         # Student 2 enters waiting room, then teacher rejects Student 2
         t_req_ev.clear()
