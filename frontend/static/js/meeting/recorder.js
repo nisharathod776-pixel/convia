@@ -1,4 +1,4 @@
-import { getAccessToken, uploadWithProgress } from '../core/api.js';
+import { apiUrl, getAccessToken, uploadWithProgress } from '../core/api.js';
 
 export class MeetingSessionRecorder {
   constructor({ onStateChange, onTick, onError } = {}) {
@@ -433,7 +433,7 @@ export async function uploadSessionRecording({
 export async function fetchAuthorizedRecordingBlobUrl(recordingId, inline = true) {
   const token = getAccessToken();
   const q = inline ? '?inline=1' : '';
-  const res = await fetch(`/api/v1/meetings/recordings/${encodeURIComponent(recordingId)}/download/${q}`, {
+  const res = await fetch(apiUrl(`/api/v1/meetings/recordings/${encodeURIComponent(recordingId)}/download/${q}`), {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {

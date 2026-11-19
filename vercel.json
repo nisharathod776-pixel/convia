@@ -1,0 +1,19 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/", "destination": "/templates/landing.html" },
+    { "source": "/meeting/:code/", "destination": "/templates/meeting.html" },
+    { "source": "/meeting/:code", "destination": "/templates/meeting.html" },
+    { "source": "/login/", "destination": "/templates/login.html" },
+    { "source": "/login", "destination": "/templates/login.html" },
+    { "source": "/register/", "destination": "/templates/register.html" },
+    { "source": "/register", "destination": "/templates/register.html" },
+    { "source": "/dashboard/", "destination": "/templates/dashboard.html" },
+    { "source": "/dashboard", "destination": "/templates/dashboard.html" },
+    { "source": "/profile/", "destination": "/templates/profile.html" },
+    { "source": "/profile", "destination": "/templates/profile.html" },
+    { "source": "/admin-panel/", "destination": "/templates/admin.html" },
+    { "source": "/admin-panel", "destination": "/templates/admin.html" }
+  ]
+}

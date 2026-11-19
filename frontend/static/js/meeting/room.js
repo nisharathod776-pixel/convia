@@ -1,4 +1,4 @@
-import { apiRequest, getAccessToken } from '../core/api.js';
+import { apiRequest, apiUrl, getAccessToken } from '../core/api.js';
 import { requireAuth } from '../core/auth.js';
 import { copyToClipboard, downloadBlobUrl, formatBytes, formatDateTime, showToast } from '../core/ui.js';
 import { MeetingFileShare } from './fileshare.js';
@@ -365,7 +365,8 @@ async function initMeetingRoom() {
   if (!user) return;
 
   const shell = document.querySelector('.meeting-shell');
-  const meetingCode = shell?.getAttribute('data-meeting-code');
+  const meetingCodeFromPath = window.location.pathname.match(/^\/meeting\/([^/]+)\/?$/i)?.[1];
+  const meetingCode = shell?.getAttribute('data-meeting-code') || meetingCodeFromPath?.toLowerCase();
   if (!meetingCode) {
     showToast('Invalid meeting code.', 'error');
     window.location.replace('/dashboard/');
@@ -817,7 +818,7 @@ async function initMeetingRoom() {
 
   async function downloadAttendanceCsv() {
     try {
-      const res = await fetch(`/api/v1/meetings/${encodeURIComponent(meetingCode)}/attendance/export/`, {
+      const res = await fetch(apiUrl(`/api/v1/meetings/${encodeURIComponent(meetingCode)}/attendance/export/`), {
         headers: { Authorization: `Bearer ${getAccessToken()}` },
       });
       if (!res.ok) throw new Error('Attendance export failed.');

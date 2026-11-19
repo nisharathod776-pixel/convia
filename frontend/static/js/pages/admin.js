@@ -1,4 +1,4 @@
-import { apiRequest, getAccessToken } from '../core/api.js';
+import { apiRequest, apiUrl, getAccessToken } from '../core/api.js';
 import { requireAuth } from '../core/auth.js';
 import { initMeetingRecordsModal } from '../core/meeting-records-modal.js';
 import { downloadBlobUrl, formatBytes, formatDateTime, setAlert, showToast } from '../core/ui.js';
@@ -220,7 +220,7 @@ function renderFilesTable() {
     dlBtn.className = 'btn btn-secondary btn-sm';
     dlBtn.textContent = 'Download';
     dlBtn.addEventListener('click', async () => {
-      const res = await fetch(`/api/v1/files/${f.id}/download/`, {
+      const res = await fetch(apiUrl(`/api/v1/files/${f.id}/download/`), {
         headers: { Authorization: `Bearer ${getAccessToken()}` },
       });
       if (!res.ok) return showToast('Download failed.', 'error');

@@ -1,5 +1,5 @@
 import { ALLOWED_FILE_EXTENSIONS, MAX_UPLOAD_BYTES } from '../core/config.js';
-import { apiRequest, getAccessToken, uploadWithProgress } from '../core/api.js';
+import { apiRequest, apiUrl, getAccessToken, uploadWithProgress } from '../core/api.js';
 import { downloadBlobUrl, formatBytes, formatDateTime, showToast } from '../core/ui.js';
 
 export class MeetingFileShare {
@@ -111,7 +111,7 @@ export class MeetingFileShare {
 
   async downloadFile(fileObj) {
     try {
-      const res = await fetch(`/api/v1/files/${fileObj.id}/download/`, {
+      const res = await fetch(apiUrl(`/api/v1/files/${fileObj.id}/download/`), {
         headers: { Authorization: `Bearer ${getAccessToken()}` },
       });
       if (!res.ok) {

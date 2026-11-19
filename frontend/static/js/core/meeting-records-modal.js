@@ -1,4 +1,4 @@
-import { apiRequest, getAccessToken } from './api.js';
+import { apiRequest, apiUrl, getAccessToken } from './api.js';
 import { downloadBlobUrl, formatBytes, formatDateTime, showToast } from './ui.js';
 import {
   createRecordingPlayer,
@@ -98,7 +98,7 @@ export function initMeetingRecordsModal() {
   async function fetchBlobUrl(recordingId, inline = true) {
     const token = getAccessToken();
     const q = inline ? '?inline=1' : '';
-    const res = await fetch(`/api/v1/meetings/recordings/${encodeURIComponent(recordingId)}/download/${q}`, {
+    const res = await fetch(apiUrl(`/api/v1/meetings/recordings/${encodeURIComponent(recordingId)}/download/${q}`), {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new Error('Unable to load recording.');
@@ -111,7 +111,7 @@ export function initMeetingRecordsModal() {
   exportBtn?.addEventListener('click', async () => {
     if (!activeMeetingCode) return;
     try {
-      const res = await fetch(`/api/v1/meetings/${encodeURIComponent(activeMeetingCode)}/attendance/export/`, {
+      const res = await fetch(apiUrl(`/api/v1/meetings/${encodeURIComponent(activeMeetingCode)}/attendance/export/`), {
         headers: { Authorization: `Bearer ${getAccessToken()}` },
       });
       if (!res.ok) throw new Error('Attendance CSV export failed.');

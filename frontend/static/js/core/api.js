@@ -1,6 +1,12 @@
-import { API_BASE, STORAGE_KEYS } from './config.js';
+import { API_BASE, API_ORIGIN, STORAGE_KEYS } from './config.js';
 
 let refreshPromise = null;
+
+export function apiUrl(path) {
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('/api/')) return `${API_ORIGIN}${path}`;
+  return `${API_BASE}${path}`;
+}
 
 export function getAccessToken() {
   return localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
@@ -50,7 +56,7 @@ export async function refreshAccessToken() {
 }
 
 export async function apiRequest(path, options = {}, { auth = true, retryOn401 = true } = {}) {
-  const url = path.startsWith('http') || path.startsWith('/api') ? path : `${API_BASE}${path}`;
+  const url = apiUrl(path);
   const headers = new Headers(options.headers || {});
 
   if (!(options.body instanceof FormData) && !headers.has('Content-Type')) {
@@ -109,7 +115,7 @@ export function extractErrorMessage(data, status) {
 
 export function uploadWithProgress(path, formData, onProgress) {
   return new Promise((resolve, reject) => {
-    const url = path.startsWith('/api') ? path : `${API_BASE}${path}`;
+    const url = apiUrl(path);
     const xhr = new XMLHttpRequest();
     xhr.open('POST', url, true);
 

@@ -1,4 +1,5 @@
 import { getAccessToken, refreshAccessToken } from '../core/api.js';
+import { SOCKET_URL } from '../core/config.js';
 
 export class MeetingSocketClient {
   constructor(meetingCode, handlers = {}) {
@@ -25,7 +26,7 @@ export class MeetingSocketClient {
     }
 
     const token = getAccessToken();
-    this.socket = window.io({
+    const socketOptions = {
       path: '/socket.io/',
       transports: ['polling', 'websocket'],
       auth: { token },
@@ -33,7 +34,10 @@ export class MeetingSocketClient {
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-    });
+    };
+    this.socket = SOCKET_URL
+      ? window.io(SOCKET_URL, socketOptions)
+      : window.io(socketOptions);
 
     this.socket.on('connect', () => {
       this.authRefreshAttempted = false;

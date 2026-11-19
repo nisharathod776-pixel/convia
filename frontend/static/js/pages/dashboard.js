@@ -1,4 +1,4 @@
-import { apiRequest, clearAuthStorage, getAccessToken } from '../core/api.js';
+import { apiRequest, apiUrl, clearAuthStorage, getAccessToken } from '../core/api.js';
 import { extractMeetingCode, requireAuth } from '../core/auth.js';
 import { initMeetingRecordsModal } from '../core/meeting-records-modal.js';
 import { copyToClipboard, downloadBlobUrl, formatBytes, formatDateTime, setFieldError, showToast } from '../core/ui.js';
@@ -206,7 +206,7 @@ function renderRecentFiles(files) {
 async function downloadAuthorizedFile(fileId, filename) {
   try {
     const token = getAccessToken();
-    const res = await fetch(`/api/v1/files/${fileId}/download/`, {
+    const res = await fetch(apiUrl(`/api/v1/files/${fileId}/download/`), {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new Error('Unable to download file.');
