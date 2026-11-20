@@ -20,7 +20,7 @@ function formatElapsedSeconds(totalSeconds) {
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
-function setSocketStatus(state, joined = false, waiting = false) {
+function setSocketStatus(state, joined = false) {
   const indicator = document.getElementById('socket-indicator');
   const text = document.getElementById('socket-status-text');
   if (indicator && text) {
@@ -28,9 +28,6 @@ function setSocketStatus(state, joined = false, waiting = false) {
     if (state === 'connected' && joined) {
       indicator.classList.add('is-connected');
       text.textContent = 'Connected';
-    } else if (state === 'connected' && waiting) {
-      indicator.classList.add('is-reconnecting');
-      text.textContent = 'Waiting Room';
     } else if (state === 'connected' || state === 'reconnecting') {
       indicator.classList.add('is-reconnecting');
       text.textContent = state === 'connected' ? 'Joining room…' : 'Reconnecting…';
@@ -147,69 +144,6 @@ function renderChatMessage(payload, user, { isTeacher = false, onDelete = null }
   messages.scrollTop = messages.scrollHeight;
 }
 
-function renderWaitingRoomList(waitingList, onDecision) {
-  const listEl = document.getElementById('waiting-room-list');
-  const countPill = document.getElementById('waiting-room-count');
-  const ctrlBadge = document.getElementById('waiting-badge');
-  const count = Array.isArray(waitingList) ? waitingList.length : 0;
-
-  if (countPill) countPill.textContent = String(count);
-  if (ctrlBadge) {
-    ctrlBadge.textContent = String(count);
-    ctrlBadge.classList.toggle('hidden', count === 0);
-  }
-  if (!listEl) return;
-
-  if (!count) {
-    listEl.innerHTML = '<p class="meeting-meta">No pending admission requests.</p>';
-    return;
-  }
-
-  listEl.innerHTML = '';
-  waitingList.forEach((student) => {
-    const row = document.createElement('div');
-    row.className = 'waiting-row';
-
-    const info = document.createElement('div');
-    info.className = 'waiting-row-info';
-    const nameEl = document.createElement('div');
-    nameEl.className = 'waiting-row-name';
-    nameEl.textContent = student.full_name || student.username;
-    const subEl = document.createElement('div');
-    subEl.className = 'meeting-meta';
-    subEl.textContent = `@${student.username}`;
-    info.append(nameEl, subEl);
-
-    const actions = document.createElement('div');
-    actions.className = 'waiting-row-actions';
-
-    const admitBtn = document.createElement('button');
-    admitBtn.type = 'button';
-    admitBtn.className = 'btn btn-primary btn-sm';
-    admitBtn.textContent = 'Admit';
-
-    const rejectBtn = document.createElement('button');
-    rejectBtn.type = 'button';
-    rejectBtn.className = 'btn btn-danger btn-sm';
-    rejectBtn.textContent = 'Reject';
-
-    admitBtn.addEventListener('click', () => {
-      admitBtn.disabled = true;
-      rejectBtn.disabled = true;
-      onDecision(student.user_id, 'admit');
-    });
-    rejectBtn.addEventListener('click', () => {
-      admitBtn.disabled = true;
-      rejectBtn.disabled = true;
-      onDecision(student.user_id, 'reject');
-    });
-
-    actions.append(admitBtn, rejectBtn);
-    row.append(info, actions);
-    listEl.appendChild(row);
-  });
-}
-
 function setupDrawerControls(resizeWhiteboard, onTabOpened, onDrawerClosed) {
   const workspace = document.getElementById('meeting-workspace');
   const drawer = document.getElementById('meeting-drawer');
@@ -322,7 +256,6 @@ async function initMeetingRoom() {
   let meeting = null;
   let isTeacher = false;
   let isHost = false;
-  let waitingPollTimer = null;
   let hasEnteredRoom = false;
 
   let peerManager = null;
@@ -1007,7 +940,6 @@ async function initMeetingRoom() {
 
     document.getElementById('end-meeting-btn')?.classList.toggle('hidden', !isTeacher);
     document.getElementById('teacher-controls-panel')?.classList.toggle('hidden', !isTeacher);
-    document.getElementById('waiting-room-section')?.classList.toggle('hidden', !isHost);
     document.getElementById('teacher-breakout-controls')?.classList.toggle('hidden', !isTeacher);
     document.getElementById('teacher-recording-controls')?.classList.toggle('hidden', !isTeacher);
 
@@ -1078,29 +1010,6 @@ async function initMeetingRoom() {
     stopBtn.classList.toggle('hidden', !show);
   }
 
-  async function handleAdmissionDecision(targetUserId, decision) {
-    if (socketClient.emit('admission_decision', { user_id: targetUserId, decision })) {
-      return;
-    }
-
-    try {
-      const res = await apiRequest(`/meetings/${encodeURIComponent(meetingCode)}/admissions/`, {
-        method: 'POST',
-        body: JSON.stringify({ user_id: targetUserId, decision }),
-      });
-
-      renderWaitingRoomList(res.waiting_room || [], handleAdmissionDecision);
-
-      showToast(
-        decision === 'admit'
-          ? 'Participant admitted.'
-          : 'Admission request declined.',
-        'info'
-      );
-    } catch (err) {
-      showToast(err.message || 'Unable to process admission decision.', 'error');
-    }
-  }
   async function sendPermissionUpdate(patch) {
     if (socketClient.emit('update_meeting_permissions', patch)) {
       return;
@@ -1342,67 +1251,18 @@ async function initMeetingRoom() {
 
   const socketClient = new MeetingSocketClient(meetingCode, {
     onConnectionState: (state) => {
-      setSocketStatus(state, socketClient.hasJoined, socketClient.waitingMode);
+      setSocketStatus(state, socketClient.hasJoined);
       whiteboard?.setEnabled(state === 'connected' && socketClient.hasJoined);
       updateChatUiState();
     },
     onError: (msg) => {
-      if (!socketClient.hasJoined && !socketClient.waitingMode) {
+      if (!socketClient.hasJoined) {
         setSocketStatus('disconnected');
         whiteboard?.setEnabled(false);
       }
       showToast(msg, 'error');
     },
-    onWaitingRoomJoined: () => {
-      setSocketStatus('connected', false, true);
-    },
-    onWaitingRoomUpdated: (payload) => {
-      if (isHost) {
-        renderWaitingRoomList(payload?.waiting_room || [],
-        handleAdmissionDecision);
-      }
-    },
-    onAdmissionRequested: (payload) => {
-      if (isHost && payload?.message) {
-        showToast(payload.message, 'info', 7000);
-      }
-    },
-    onAdmissionApproved: async () => {
-      if (waitingPollTimer) {
-        clearInterval(waitingPollTimer);
-        waitingPollTimer = null;
-      }
-      if (hasEnteredRoom) return;
-      try {
-        const admittedMeeting = await apiRequest(`/meetings/${encodeURIComponent(meetingCode)}/join/`, {
-          method: 'POST',
-        });
-        hideAdmissionGate();
-        showToast('You have been admitted to the meeting.', 'success');
-        await enterAdmittedRoom(admittedMeeting);
-      } catch (err) {
-        showAdmissionGate({
-          title: 'Unable to Enter Meeting',
-          message: err.message || 'Admission could not be completed.',
-          isError: true,
-        });
-      }
-    },
-    onAdmissionRejected: () => {
-      if (waitingPollTimer) {
-        clearInterval(waitingPollTimer);
-        waitingPollTimer = null;
-      }
-
-      socketClient.disconnect();
-      window.location.replace('/dashboard/');
-    },
-
     onParticipantRemoved: (payload) => {
-      if (waitingPollTimer) {
-        clearInterval(waitingPollTimer);
-        waitingPollTimer = null;
-      }
       socketClient.disconnect();
       peerManager?.cleanup();
       showAdmissionGate({
@@ -1437,9 +1297,6 @@ async function initMeetingRoom() {
           isTeacher,
           onDelete: handleDeleteChatMessage,
         }));
-      }
-      if (isHost && Array.isArray(payload.waiting_room)) {
-        renderWaitingRoomList(payload.waiting_room, handleAdmissionDecision);
       }
       if (peerManager) {
         peerManager.setLocalSid(payload.self_sid);
@@ -1569,10 +1426,6 @@ async function initMeetingRoom() {
       updateTeacherStopShareBtn(payload);
     },
     onMeetingEnded: () => {
-      if (waitingPollTimer) {
-        clearInterval(waitingPollTimer);
-        waitingPollTimer = null;
-      }
       showToast('This meeting was ended by the teacher.', 'warning');
       peerManager?.cleanup();
       setTimeout(() => window.location.replace('/dashboard/'), 1200);
@@ -1693,9 +1546,6 @@ async function initMeetingRoom() {
     const setStageView = setupStageViewControls(whiteboard);
     setupChatForm();
     applyRoleAndPermissions(meeting, meeting.meeting_role);
-    if (isTeacher && Array.isArray(meeting.waiting_room)) {
-      renderWaitingRoomList(meeting.waiting_room, handleAdmissionDecision);
-    }
 
     // Teacher Moderation & Permissions Controls
     document.getElementById('perm-wb-student-toggle')?.addEventListener('change', (e) => {
@@ -1900,12 +1750,10 @@ async function initMeetingRoom() {
       method: 'POST',
     });
   } catch (err) {
-    const code = err.data?.code;
     let title = 'Unable to Join Meeting';
-    if (code === 'admission_expired') title = 'Admission Window Closed';
-    else if (code === 'not_started') title = 'Meeting Not Started Yet';
-    else if (code === 'admission_rejected') title = 'Admission Declined';
-    else if (code === 'admission_removed') title = 'Removed From Meeting';
+    if (err.data?.code === 'admission_expired') title = 'Meeting Admission Window Closed';
+    else if (err.data?.code === 'not_started') title = 'Meeting Not Started Yet';
+    else if (err.data?.code === 'admission_removed') title = 'Removed From Meeting';
 
     showAdmissionGate({
       title,
@@ -1917,65 +1765,6 @@ async function initMeetingRoom() {
 
   document.getElementById('room-meeting-title').textContent = meeting.title || 'CONVIA Meeting';
   document.getElementById('room-meeting-code').textContent = meeting.meeting_code || meetingCode;
-
-  if (meeting.admission_status === 'waiting') {
-    showAdmissionGate({
-      title: 'Waiting Room',
-      message: meeting.detail || 'Waiting for teacher approval to join the meeting.',
-      meta: meeting.title ? `Meeting: ${meeting.title}` : '',
-      isError: false,
-    });
-
-    try {
-      socketClient.connect({ waitingRoom: true });
-    } catch (err) {
-      showToast(err.message || 'Real-time connection could not be started.', 'warning');
-    }
-
-    waitingPollTimer = setInterval(async () => {
-      if (hasEnteredRoom) {
-        clearInterval(waitingPollTimer);
-        waitingPollTimer = null;
-        return;
-      }
-      try {
-        const res = await apiRequest(`/meetings/${encodeURIComponent(meetingCode)}/join/`, {
-          method: 'POST',
-        });
-        if (res.admission_status === 'admitted') {
-          clearInterval(waitingPollTimer);
-          waitingPollTimer = null;
-          hideAdmissionGate();
-          showToast('You have been admitted to the meeting.', 'success');
-          await enterAdmittedRoom(res);
-        }
-      } catch (pollErr) {
-        if (waitingPollTimer) {
-          clearInterval(waitingPollTimer);
-          waitingPollTimer = null;
-        }
-
-        socketClient.disconnect();
-
-        if (pollErr.data?.code === 'admission_rejected') {
-          window.location.replace('/dashboard/');
-          return;
-        }
-
-        showAdmissionGate({
-          title: 'Unable to Join',
-          message: pollErr.message || 'Unable to enter meeting.',
-          isError: true,
-        });
-      }
-    }, 5000);
-
-    window.addEventListener('beforeunload', () => {
-      if (waitingPollTimer) clearInterval(waitingPollTimer);
-      socketClient.disconnect();
-    });
-    return;
-  }
 
   hideAdmissionGate();
   await enterAdmittedRoom(meeting);

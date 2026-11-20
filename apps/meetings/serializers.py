@@ -42,19 +42,6 @@ class MeetingParticipantSerializer(serializers.ModelSerializer):
         )
 
 
-class WaitingParticipantSerializer(serializers.ModelSerializer):
-    user_id = serializers.IntegerField(source="user.id", read_only=True)
-    username = serializers.CharField(source="user.username", read_only=True)
-    full_name = serializers.SerializerMethodField()
-
-    class Meta:
-        model = MeetingParticipant
-        fields = ("id", "user_id", "username", "full_name", "admission_status", "requested_at")
-
-    def get_full_name(self, obj):
-        return obj.user.full_name or obj.user.username
-
-
 class MeetingChatMessageSerializer(serializers.ModelSerializer):
     id = serializers.UUIDField(read_only=True)
     sender_id = serializers.IntegerField(source="sender.id", read_only=True)
@@ -160,7 +147,6 @@ class MeetingSerializer(serializers.ModelSerializer):
             "status",
             "scheduled_at",
             "admission_deadline",
-            "waiting_room_enabled",
             "whiteboard_student_write_enabled",
             "allow_student_screenshare",
             "allow_student_mic",
@@ -250,7 +236,6 @@ class MeetingCreateSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=160, min_length=2)
     scheduled_at = serializers.DateTimeField(required=False, allow_null=True)
     admission_deadline = serializers.DateTimeField(required=False, allow_null=True)
-    waiting_room_enabled = serializers.BooleanField(required=False, default=True)
     whiteboard_student_write_enabled = serializers.BooleanField(required=False, default=False)
     allow_student_screenshare = serializers.BooleanField(required=False, default=False)
     allow_student_mic = serializers.BooleanField(required=False, default=True)

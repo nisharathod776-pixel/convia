@@ -1,23 +1,22 @@
 import asyncio
 from asgiref.sync import sync_to_async
 from django.contrib.auth import get_user_model
+from django.db import transaction
 
 from apps.meetings.models import ActivityLog, BreakoutRoom, Meeting, MeetingParticipant
 from apps.meetings.permissions import (
     can_clear_whiteboard,
     can_edit_whiteboard,
     can_send_chat,
-    is_meeting_member,
     is_meeting_teacher,
 )
+from apps.meetings.services import admit_meeting_participant
 from .server import sio
 
 User = get_user_model()
 
 # Active connected peers per meeting_code: { meeting_code: { sid: peer_dict } }
 ROOM_PEERS: dict[str, dict[str, dict]] = {}
-# Waiting room peers per meeting_code: { meeting_code: { sid: waiting_dict } }
-WAITING_PEERS: dict[str, dict[str, dict]] = {}
 # Per-meeting async locks to serialize screen-share, moderation, breakout, and admission mutations
 ROOM_LOCKS: dict[str, asyncio.Lock] = {}
 
@@ -47,10 +46,6 @@ def room_subchannel(meeting_code: str, breakout_id=None) -> str:
     if breakout_id:
         return breakout_channel(meeting_code, breakout_id)
     return room_channel(meeting_code)
-
-
-def waiting_channel(meeting_code: str) -> str:
-    return f"waiting:{meeting_code.lower()}"
 
 
 def get_peer_breakout_id(meeting_code: str, sid: str):
@@ -83,54 +78,19 @@ def get_authorized_meeting_context(user_id: int, meeting_code: str):
     except User.DoesNotExist:
         return None, False, "User account is inactive."
 
-    try:
-        meeting = Meeting.objects.select_related("host", "active_screen_sharer").get(meeting_code=code)
-    except Meeting.DoesNotExist:
-        return None, False, "Meeting not found."
+    with transaction.atomic():
+        try:
+            meeting = Meeting.objects.select_for_update(of=("self",)).select_related(
+                "host", "active_screen_sharer"
+            ).get(meeting_code=code)
+        except Meeting.DoesNotExist:
+            return None, False, "Meeting not found."
 
-    if meeting.status == Meeting.STATUS_ENDED:
-        return None, False, "Meeting has ended."
+        _, error = admit_meeting_participant(user, meeting)
+        if error:
+            return None, False, error["detail"]
 
-    if not is_meeting_member(user, meeting):
-        participant = MeetingParticipant.objects.filter(meeting=meeting, user=user).first()
-        if participant and participant.admission_status == MeetingParticipant.ADMISSION_REMOVED:
-            return None, False, "You were removed from this meeting by the teacher."
-        return None, False, "Admission approval by the teacher is required before entering this meeting."
-
-    return meeting, is_meeting_teacher(user, meeting), None
-
-
-@sync_to_async
-def get_waiting_meeting_context(user_id: int, meeting_code: str):
-    code = (meeting_code or "").strip().lower()
-    if not code:
-        return None, "none", "Meeting code is required."
-    try:
-        user = User.objects.get(id=user_id, is_active=True)
-    except User.DoesNotExist:
-        return None, "none", "User account is inactive."
-
-    try:
-        meeting = Meeting.objects.select_related("host").get(meeting_code=code)
-    except Meeting.DoesNotExist:
-        return None, "none", "Meeting not found."
-
-    if meeting.status == Meeting.STATUS_ENDED:
-        return None, "ended", "Meeting has ended."
-
-    if is_meeting_member(user, meeting):
-        return meeting, MeetingParticipant.ADMISSION_ADMITTED, None
-
-    participant = MeetingParticipant.objects.filter(meeting=meeting, user=user).first()
-    if not participant:
-        return None, "none", "Join request is required before entering the waiting room."
-    if participant.admission_status == MeetingParticipant.ADMISSION_REMOVED:
-        return None, MeetingParticipant.ADMISSION_REMOVED, "You were removed from this meeting by the teacher."
-    if participant.admission_status == MeetingParticipant.ADMISSION_REJECTED:
-        return None, MeetingParticipant.ADMISSION_REJECTED, "Your admission request was declined by the teacher."
-    if participant.admission_status == MeetingParticipant.ADMISSION_WAITING:
-        return meeting, MeetingParticipant.ADMISSION_WAITING, None
-    return None, "none", "Not authorized for waiting room."
+        return meeting, is_meeting_teacher(user, meeting), None
 
 
 @sync_to_async

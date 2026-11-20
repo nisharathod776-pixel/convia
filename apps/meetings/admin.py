@@ -19,7 +19,6 @@ class MeetingAdmin(admin.ModelAdmin):
         "status",
         "scheduled_at",
         "admission_deadline",
-        "waiting_room_enabled",
         "allow_student_mic",
         "allow_student_camera",
         "chat_mode",
@@ -27,7 +26,7 @@ class MeetingAdmin(admin.ModelAdmin):
         "created_at",
         "ended_at",
     )
-    list_filter = ("status", "waiting_room_enabled", "chat_mode", "is_recording")
+    list_filter = ("status", "chat_mode", "is_recording")
     search_fields = ("meeting_code", "title", "host__username")
 
 

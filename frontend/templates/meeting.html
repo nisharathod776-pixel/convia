@@ -35,12 +35,12 @@
     </div>
   </header>
 
-  <!-- Waiting Room / Admission Gate Overlay -->
+  <!-- Meeting join error overlay -->
   <div id="admission-gate-overlay" class="admission-gate-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="admission-gate-title">
     <div class="admission-gate-card">
       <div class="admission-gate-spinner" id="admission-gate-spinner" aria-hidden="true"></div>
-      <h2 id="admission-gate-title" class="admission-gate-title">Joining Meeting…</h2>
-      <p id="admission-gate-message" class="admission-gate-message">Checking meeting admission status…</p>
+      <h2 id="admission-gate-title" class="admission-gate-title">Unable to Join Meeting</h2>
+      <p id="admission-gate-message" class="admission-gate-message">Unable to join this meeting.</p>
       <p id="admission-gate-meta" class="admission-gate-meta hidden"></p>
       <div class="admission-gate-actions">
         <button type="button" id="admission-leave-btn" class="btn btn-secondary">Back to Dashboard</button>
@@ -167,16 +167,6 @@
 
       <div class="drawer-body" id="drawer-participants-panel">
         <section id="teacher-controls-panel" class="teacher-panel hidden" aria-label="Teacher Host Controls">
-          <div class="teacher-panel-section" id="waiting-room-section">
-            <div class="teacher-panel-heading">
-              <h3>Waiting Room</h3>
-              <span class="waiting-count-pill" id="waiting-room-count">0</span>
-            </div>
-            <div id="waiting-room-list" class="waiting-room-list">
-              <p class="meeting-meta">No pending admission requests.</p>
-            </div>
-          </div>
-
           <div class="teacher-panel-section">
             <div class="teacher-panel-heading">
               <h3>Classroom Permissions</h3>
@@ -364,7 +354,6 @@
       </button>
       <button type="button" id="toggle-participants-btn" class="ctrl-btn">
         <span class="ctrl-label">Participants</span>
-        <span class="ctrl-badge hidden" id="waiting-badge">0</span>
       </button>
       <button type="button" id="toggle-files-btn" class="ctrl-btn">
         <span class="ctrl-label">Files</span>

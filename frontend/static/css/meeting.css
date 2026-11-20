@@ -749,7 +749,7 @@ body.meeting-body {
   }
 }
 
-/* Batch 1: Role Badge, Waiting Room Gate, Teacher Controls, Whiteboard Read-Only, Chat Moderation */
+/* Batch 1: Role Badge, Join Error Gate, Teacher Controls, Whiteboard Read-Only, Chat Moderation */
 .role-badge {
   display: inline-flex;
   align-items: center;
@@ -895,7 +895,6 @@ body.meeting-body {
   margin: 0;
 }
 
-.waiting-count-pill,
 .ctrl-badge {
   display: inline-flex;
   align-items: center;
@@ -908,42 +907,6 @@ body.meeting-body {
   color: #FFFFFF;
   font-size: 0.75rem;
   font-weight: 700;
-}
-
-.waiting-room-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.waiting-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px;
-  background-color: var(--studio-surface);
-  border: 1px solid var(--studio-border);
-  border-radius: var(--radius-sm);
-}
-
-.waiting-row-info {
-  min-width: 0;
-}
-
-.waiting-row-name {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--studio-ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.waiting-row-actions {
-  display: flex;
-  gap: 6px;
-  flex-shrink: 0;
 }
 
 .perm-toggle-row {

@@ -7,19 +7,16 @@ export class MeetingSocketClient {
     this.handlers = handlers;
     this.socket = null;
     this.hasJoined = false;
-    this.waitingMode = false;
-    this.hasJoinedWaiting = false;
     this.authRefreshAttempted = false;
   }
 
-  connect({ waitingRoom = false } = {}) {
+  connect() {
     if (typeof window.io !== 'function') {
       throw new Error('Socket.IO client library is not loaded.');
     }
 
-    this.waitingMode = Boolean(waitingRoom);
     if (this.socket) {
-      if (!this.waitingMode && this.socket.connected && !this.hasJoined) {
+      if (this.socket.connected && !this.hasJoined) {
         this.socket.emit('join_meeting', { meeting_code: this.meetingCode });
       }
       return;
@@ -42,16 +39,11 @@ export class MeetingSocketClient {
     this.socket.on('connect', () => {
       this.authRefreshAttempted = false;
       this.handlers.onConnectionState?.('connected');
-      if (this.waitingMode) {
-        this.socket.emit('join_waiting_room', { meeting_code: this.meetingCode });
-      } else {
-        this.socket.emit('join_meeting', { meeting_code: this.meetingCode });
-      }
+      this.socket.emit('join_meeting', { meeting_code: this.meetingCode });
     });
 
     this.socket.on('disconnect', (reason) => {
       this.hasJoined = false;
-      this.hasJoinedWaiting = false;
       this.handlers.onConnectionState?.('disconnected', reason);
       if (reason === 'io server disconnect' && this.socket) {
         this.socket.connect();
@@ -90,18 +82,7 @@ export class MeetingSocketClient {
       this.handlers.onError?.(payload?.message || 'Room error.');
     });
 
-    this.socket.on('waiting_room_joined', (payload) => {
-      this.hasJoinedWaiting = true;
-      this.handlers.onWaitingRoomJoined?.(payload);
-    });
-    this.socket.on('waiting_room_updated', (payload) => this.handlers.onWaitingRoomUpdated?.(payload));
-    this.socket.on('admission_requested', (payload) => this.handlers.onAdmissionRequested?.(payload));
-    this.socket.on('admission_approved', (payload) => this.handlers.onAdmissionApproved?.(payload));
-    this.socket.on('admission_rejected', (payload) => this.handlers.onAdmissionRejected?.(payload));
-
     this.socket.on('room_joined', (payload) => {
-      this.waitingMode = false;
-      this.hasJoinedWaiting = false;
       this.hasJoined = true;
       this.handlers.onRoomJoined?.(payload);
     });
@@ -143,11 +124,10 @@ export class MeetingSocketClient {
   }
 
   upgradeToRoom() {
-    this.waitingMode = false;
     if (this.socket && this.socket.connected) {
       this.socket.emit('join_meeting', { meeting_code: this.meetingCode });
     } else if (!this.socket) {
-      this.connect({ waitingRoom: false });
+      this.connect();
     }
   }
 
@@ -159,14 +139,10 @@ export class MeetingSocketClient {
 
   disconnect() {
     if (this.socket) {
-      if (this.hasJoinedWaiting && !this.hasJoined && this.socket.connected) {
-        this.socket.emit('leave_waiting_room', { meeting_code: this.meetingCode });
-      }
       this.emit('leave_meeting', {});
       this.socket.disconnect();
       this.socket = null;
     }
     this.hasJoined = false;
-    this.hasJoinedWaiting = false;
   }
 }

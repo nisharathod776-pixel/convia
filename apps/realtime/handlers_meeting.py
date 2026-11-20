@@ -29,17 +29,14 @@ from apps.whiteboard.models import WhiteboardOperation
 from .server import sio
 from .validators import (
     ROOM_PEERS,
-    WAITING_PEERS,
     control_channel,
     get_authorized_meeting_context,
     get_peer_subchannel,
     get_room_lock,
-    get_waiting_meeting_context,
     room_channel,
     room_subchannel,
     verify_sid_in_room,
     verify_teacher_in_room,
-    waiting_channel,
 )
 
 User = get_user_model()
@@ -198,7 +195,6 @@ def _permissions_dict_sync(meeting: Meeting, user=None, is_teacher: bool = False
     return {
         "whiteboard_student_write_enabled": meeting.whiteboard_student_write_enabled,
         "allow_student_screenshare": meeting.allow_student_screenshare,
-        "waiting_room_enabled": meeting.waiting_room_enabled,
         "allow_student_mic": meeting.allow_student_mic,
         "allow_student_camera": meeting.allow_student_camera,
         "allow_student_file_share": meeting.allow_student_file_share,
@@ -279,28 +275,6 @@ def _enter_meeting_and_load_state(meeting_id, user_id: int, is_teacher: bool):
             for m in chat_qs
         ]
 
-        waiting_room = []
-        if meeting.host_id == user.id:
-            waiting_qs = (
-                MeetingParticipant.objects.filter(
-                    meeting_id=meeting_id,
-                    admission_status=MeetingParticipant.ADMISSION_WAITING,
-                )
-                .select_related("user")
-                .order_by("requested_at", "joined_at")
-            )
-            waiting_room = [
-                {
-                    "id": p.id,
-                    "user_id": p.user_id,
-                    "username": p.user.username,
-                    "full_name": p.user.full_name or p.user.username,
-                    "admission_status": p.admission_status,
-                    "requested_at": p.requested_at.isoformat() if p.requested_at else None,
-                }
-                for p in waiting_qs
-            ]
-
         permissions = _permissions_dict_sync(meeting, user=user, is_teacher=is_teacher, breakout_room=breakout_room)
         breakout_rooms = _serialize_breakout_rooms_sync(meeting)
         my_moderation = {
@@ -310,7 +284,7 @@ def _enter_meeting_and_load_state(meeting_id, user_id: int, is_teacher: bool):
             "hand_raised": participant.hand_raised,
             "current_breakout_id": breakout_room_id,
         }
-        return wb_ops, chat_messages, waiting_room, permissions, my_moderation, breakout_rooms, breakout_room_id
+        return wb_ops, chat_messages, [], permissions, my_moderation, breakout_rooms, breakout_room_id
 
 
 @sync_to_async
@@ -380,113 +354,6 @@ def _close_disconnected_attendance(meeting_code: str, user_id: int):
 
 
 @sync_to_async
-def _get_waiting_room_list(meeting_code: str):
-    waiting_qs = (
-        MeetingParticipant.objects.filter(
-            meeting__meeting_code=meeting_code.lower(),
-            admission_status=MeetingParticipant.ADMISSION_WAITING,
-        )
-        .select_related("user")
-        .order_by("requested_at", "joined_at")
-    )
-    return [
-        {
-            "id": p.id,
-            "user_id": p.user_id,
-            "username": p.user.username,
-            "full_name": p.user.full_name or p.user.username,
-            "admission_status": p.admission_status,
-            "requested_at": p.requested_at.isoformat() if p.requested_at else None,
-        }
-        for p in waiting_qs
-    ]
-
-
-@sync_to_async
-def _process_admission_decision(meeting_code: str, teacher_id: int, target_user_id: int, decision: str):
-    with transaction.atomic():
-        teacher = User.objects.filter(id=teacher_id, is_active=True).first()
-        meeting = Meeting.objects.select_for_update().filter(meeting_code=meeting_code.lower()).first()
-        if not teacher or not meeting:
-            return False, "Meeting not found.", []
-        if meeting.host_id != teacher.id:
-            ActivityLog.objects.create(
-                user=teacher,
-                action="unauthorized_admission_decision",
-                detail=f"{meeting.meeting_code}: target={target_user_id}",
-            )
-            return False, "Only the Host can manage admission requests.", []
-        if meeting.status == Meeting.STATUS_ENDED:
-            return False, "Meeting has already ended.", []
-
-        participant = (
-            MeetingParticipant.objects.select_for_update()
-            .select_related("user")
-            .filter(meeting=meeting, user_id=target_user_id)
-            .first()
-        )
-        if not participant:
-            return False, "Admission request not found.", []
-        if participant.is_teacher:
-            return False, "Cannot modify admission status for the meeting teacher.", []
-        if participant.admission_status != MeetingParticipant.ADMISSION_WAITING:
-            return False, f"Request is already {participant.admission_status}.", []
-
-        now = timezone.now()
-        if decision == "admit":
-            if meeting.status == Meeting.STATUS_SCHEDULED:
-                meeting.status = Meeting.STATUS_ACTIVE
-                meeting.save(update_fields=["status"])
-            participant.admission_status = MeetingParticipant.ADMISSION_ADMITTED
-            participant.is_active = True
-            participant.admitted_at = now
-            participant.left_at = None
-            participant.decision_by = teacher
-            participant.save(
-                update_fields=["admission_status", "is_active", "admitted_at", "left_at", "decision_by"]
-            )
-            ActivityLog.objects.create(
-                user=teacher,
-                action="admission_admitted",
-                detail=f"{meeting.meeting_code}: @{participant.user.username}",
-            )
-        else:
-            participant.admission_status = MeetingParticipant.ADMISSION_REJECTED
-            participant.is_active = False
-            participant.rejected_at = now
-            participant.decision_by = teacher
-            participant.save(
-                update_fields=["admission_status", "is_active", "rejected_at", "decision_by"]
-            )
-            ActivityLog.objects.create(
-                user=teacher,
-                action="admission_rejected",
-                detail=f"{meeting.meeting_code}: @{participant.user.username}",
-            )
-
-        waiting_qs = (
-            MeetingParticipant.objects.filter(
-                meeting=meeting,
-                admission_status=MeetingParticipant.ADMISSION_WAITING,
-            )
-            .select_related("user")
-            .order_by("requested_at", "joined_at")
-        )
-        waiting_list = [
-            {
-                "id": p.id,
-                "user_id": p.user_id,
-                "username": p.user.username,
-                "full_name": p.user.full_name or p.user.username,
-                "admission_status": p.admission_status,
-                "requested_at": p.requested_at.isoformat() if p.requested_at else None,
-            }
-            for p in waiting_qs
-        ]
-        return True, participant.admission_status, waiting_list
-
-
-@sync_to_async
 def _update_permissions_db(meeting_code: str, teacher_id: int, data: dict):
     with transaction.atomic():
         teacher = User.objects.filter(id=teacher_id, is_active=True).first()
@@ -513,7 +380,6 @@ def _update_permissions_db(meeting_code: str, teacher_id: int, data: dict):
         for bool_field, log_name in (
             ("whiteboard_student_write_enabled", "wb_student"),
             ("allow_student_screenshare", "student_screenshare"),
-            ("waiting_room_enabled", "waiting_room"),
             ("allow_student_mic", "student_mic"),
             ("allow_student_camera", "student_camera"),
             ("allow_student_file_share", "student_file_share"),
@@ -1109,21 +975,6 @@ def _teacher_sids_in_room(code: str) -> list[str]:
     ]
 
 
-def _host_sids_in_room(code: str) -> list[str]:
-    return [
-        peer_sid
-        for peer_sid, info in ROOM_PEERS.get(code, {}).items()
-        if info.get("is_host") is True
-    ]
-
-
-async def _emit_to_host(code: str, event: str, payload: dict):
-    for host_sid in _host_sids_in_room(code):
-        await sio.emit(event, payload, to=host_sid)
-
-
-
-
 async def _emit_to_teachers(code: str, event: str, payload: dict):
     for t_sid in _teacher_sids_in_room(code):
         await sio.emit(event, payload, to=t_sid)
@@ -1136,11 +987,7 @@ async def _leave_all_rooms(sid: str):
     rooms = list(session.get("rooms", set()))
     for code in rooms:
         await _remove_sid_from_room(sid, code)
-    waiting_rooms = list(session.get("waiting_rooms", set()))
-    for code in waiting_rooms:
-        await _remove_sid_from_waiting(sid, code)
     session["rooms"] = set()
-    session["waiting_rooms"] = set()
     await sio.save_session(sid, session)
 
 
@@ -1173,15 +1020,6 @@ async def _remove_sid_from_room(sid: str, code: str):
         if departed_uid and not still_connected:
             await _close_disconnected_attendance(code, departed_uid)
             await _emit_to_teachers(code, "attendance_updated", {"meeting_code": code})
-
-
-async def _remove_sid_from_waiting(sid: str, code: str):
-    await sio.leave_room(sid, waiting_channel(code))
-    waiting = WAITING_PEERS.get(code)
-    if waiting and sid in waiting:
-        waiting.pop(sid, None)
-        if not waiting:
-            WAITING_PEERS.pop(code, None)
 
 
 async def _move_peer_subchannel(code: str, target_sid: str, new_breakout_id):
@@ -1240,137 +1078,6 @@ async def _move_peer_subchannel(code: str, target_sid: str, new_breakout_id):
     event_name = "breakout_entered" if norm_new_id else "breakout_exited"
     await sio.emit(event_name, move_payload, to=target_sid)
     await sio.emit("participant_joined", {"participant": peer}, room=new_channel, skip_sid=target_sid)
-
-
-@sio.event
-async def join_waiting_room(sid, data):
-    session = await sio.get_session(sid)
-    if not session:
-        return
-    user_data = session["user"]
-    code = ((data or {}).get("meeting_code") or "").strip().lower()
-
-    meeting, admission_status, err = await get_waiting_meeting_context(user_data["user_id"], code)
-    if err:
-        if admission_status == MeetingParticipant.ADMISSION_REJECTED:
-            await sio.emit("admission_rejected", {"meeting_code": code, "detail": err}, to=sid)
-        elif admission_status == MeetingParticipant.ADMISSION_REMOVED:
-            await sio.emit("participant_removed", {"meeting_code": code, "message": err}, to=sid)
-        else:
-            await sio.emit("error_event", {"message": err}, to=sid)
-        return
-
-    if admission_status == MeetingParticipant.ADMISSION_ADMITTED:
-        await sio.emit("admission_approved", {"meeting_code": code}, to=sid)
-        return
-
-    w_chan = waiting_channel(code)
-    await sio.enter_room(sid, w_chan)
-    session.setdefault("waiting_rooms", set()).add(code)
-    await sio.save_session(sid, session)
-
-    already_connected_for_user = any(
-        entry.get("user_id") == user_data["user_id"]
-        for entry in WAITING_PEERS.get(code, {}).values()
-    )
-    WAITING_PEERS.setdefault(code, {})[sid] = {
-        "sid": sid,
-        "user_id": user_data["user_id"],
-        "username": user_data["username"],
-        "full_name": user_data["full_name"],
-    }
-
-    waiting_list = await _get_waiting_room_list(code)
-    await sio.emit(
-        "waiting_room_joined",
-        {"meeting_code": code, "admission_status": MeetingParticipant.ADMISSION_WAITING},
-        to=sid,
-    )
-    await _emit_to_host(
-        code,
-        "waiting_room_updated",
-        {"meeting_code": code, "waiting_room": waiting_list},
-    )
-    if not already_connected_for_user:
-        display_name = user_data.get("full_name") or user_data["username"]
-        await _emit_to_host(
-            code,
-            "admission_requested",
-            {
-                "meeting_code": code,
-                "user_id": user_data["user_id"],
-                "username": user_data["username"],
-                "full_name": display_name,
-                "message": f"{display_name} is requesting to join the meeting.",            },
-        )
-
-
-@sio.event
-async def leave_waiting_room(sid, data):
-    code = ((data or {}).get("meeting_code") or "").strip().lower()
-    session = await sio.get_session(sid)
-    if not session or not code:
-        return
-    if code in session.get("waiting_rooms", set()):
-        session["waiting_rooms"].discard(code)
-        await sio.save_session(sid, session)
-        await _remove_sid_from_waiting(sid, code)
-
-
-@sio.event
-async def admission_decision(sid, data):
-    data = data if isinstance(data, dict) else {}
-    code, user_data = await verify_teacher_in_room(sid, data.get("meeting_code"))
-    if not code or not user_data:
-        await sio.emit(
-            "error_event",
-            {"message": "Only the meeting teacher can admit or reject students."},
-            to=sid,
-        )
-        return
-
-    decision = str(data.get("decision", "")).strip().lower()
-    if decision not in ("admit", "reject"):
-        await sio.emit("error_event", {"message": "Invalid admission decision."}, to=sid)
-        return
-    try:
-        target_user_id = int(data.get("user_id"))
-    except (TypeError, ValueError):
-        await sio.emit("error_event", {"message": "Valid user_id is required."}, to=sid)
-        return
-
-    async with get_room_lock(code):
-        ok, result, waiting_list = await _process_admission_decision(
-            code, user_data["user_id"], target_user_id, decision
-        )
-        if not ok:
-            await sio.emit("error_event", {"message": result}, to=sid)
-            return
-
-        target_sids = [
-            w_sid
-            for w_sid, w_info in list(WAITING_PEERS.get(code, {}).items())
-            if w_info.get("user_id") == target_user_id
-        ]
-        for target_sid in target_sids:
-            if decision == "admit":
-                await sio.emit("admission_approved", {"meeting_code": code}, to=target_sid)
-            else:
-                await sio.emit(
-                    "admission_rejected",
-                    {
-                        "meeting_code": code,
-                        "detail": "Your admission request was declined by the teacher.",
-                    },
-                    to=target_sid,
-                )
-            await _remove_sid_from_waiting(target_sid, code)
-            target_session = await sio.get_session(target_sid)
-            if target_session and code in target_session.get("waiting_rooms", set()):
-                target_session["waiting_rooms"].discard(code)
-                await sio.save_session(target_sid, target_session)
-
-        await _emit_to_teachers(code, "waiting_room_updated", {"meeting_code": code, "waiting_room": waiting_list})
 
 
 @sio.event
@@ -1729,14 +1436,10 @@ async def join_meeting(sid, data):
 
     is_host = meeting.host_id == user_data["user_id"] if meeting else False
 
-    if code in session.get("waiting_rooms", set()):
-        session["waiting_rooms"].discard(code)
-        await _remove_sid_from_waiting(sid, code)
-
     (
         wb_ops,
         chat_messages,
-        waiting_room,
+        _reserved,
         permissions,
         my_moderation,
         breakout_rooms,
@@ -1787,9 +1490,6 @@ async def join_meeting(sid, data):
         "whiteboard_ops": wb_ops,
         "chat_messages": chat_messages,
     }
-    if is_teacher:
-        payload["waiting_room"] = waiting_room
-
     await sio.emit("room_joined", payload, to=sid)
     await sio.emit("participant_joined", {"participant": peer_info}, room=subchannel, skip_sid=sid)
     await _emit_to_teachers(code, "attendance_updated", {"meeting_code": code})
@@ -1826,12 +1526,9 @@ async def end_meeting(sid, data):
         await sio.emit("error_event", {"message": "Only the teacher can end this meeting."}, to=sid)
         return
 
-    w_channel = waiting_channel(code)
     await sio.emit("meeting_ended", {"meeting_code": code}, room=control_channel(code))
     await sio.emit("meeting_ended", {"meeting_code": code}, room=room_channel(code))
-    await sio.emit("meeting_ended", {"meeting_code": code}, room=w_channel)
     ROOM_PEERS.pop(code, None)
-    WAITING_PEERS.pop(code, None)
 
 
 @sio.event

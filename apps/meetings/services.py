@@ -18,6 +18,78 @@ ALLOWED_RECORDING_MIMES = {
 }
 
 
+def admit_meeting_participant(user, meeting: Meeting, at_time=None):
+    """Admit an authenticated meeting visitor without a host approval step."""
+    now = at_time or timezone.now()
+
+    if meeting.status == Meeting.STATUS_ENDED:
+        return None, {
+            "detail": "This meeting has already ended.",
+            "code": "meeting_ended",
+            "status": 400,
+        }
+
+    is_teacher = is_meeting_teacher(user, meeting)
+    participant = (
+        MeetingParticipant.objects.select_for_update()
+        .filter(meeting=meeting, user=user)
+        .first()
+    )
+
+    if not is_teacher:
+        if participant and participant.admission_status == MeetingParticipant.ADMISSION_REMOVED:
+            return None, {
+                "detail": "You were removed from this meeting by the teacher.",
+                "code": "admission_removed",
+                "status": 403,
+            }
+
+        already_admitted = bool(
+            participant and participant.admission_status == MeetingParticipant.ADMISSION_ADMITTED
+        )
+        if not already_admitted and meeting.scheduled_at and now < meeting.scheduled_at:
+            return None, {
+                "detail": "This meeting has not started yet. Admission opens at the scheduled start time.",
+                "code": "not_started",
+                "status": 403,
+                "scheduled_at": meeting.scheduled_at.isoformat(),
+            }
+        if not already_admitted and meeting.admission_deadline and now > meeting.admission_deadline:
+            return None, {
+                "detail": "The meeting admission time has expired. Please contact your teacher.",
+                "code": "admission_expired",
+                "status": 403,
+                "admission_deadline": meeting.admission_deadline.isoformat(),
+            }
+
+    if meeting.status == Meeting.STATUS_SCHEDULED:
+        meeting.status = Meeting.STATUS_ACTIVE
+        meeting.save(update_fields=["status"])
+
+    role = MeetingParticipant.ROLE_TEACHER if is_teacher else MeetingParticipant.ROLE_STUDENT
+    if participant is None:
+        participant = MeetingParticipant.objects.create(
+            meeting=meeting,
+            user=user,
+            role=role,
+            admission_status=MeetingParticipant.ADMISSION_ADMITTED,
+            is_active=True,
+            admitted_at=now,
+        )
+    else:
+        participant.admission_status = MeetingParticipant.ADMISSION_ADMITTED
+        participant.is_active = True
+        participant.left_at = None
+        participant.admitted_at = participant.admitted_at or now
+        if is_teacher and participant.role not in MeetingParticipant.TEACHER_ROLES:
+            participant.role = MeetingParticipant.ROLE_TEACHER
+        participant.save(
+            update_fields=["admission_status", "is_active", "left_at", "admitted_at", "role"]
+        )
+
+    return participant, None
+
+
 def open_attendance_session(meeting: Meeting, user, role: str, at_time=None):
     now = at_time or timezone.now()
     existing = AttendanceSession.objects.filter(

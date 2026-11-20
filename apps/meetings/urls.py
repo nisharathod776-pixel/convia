@@ -1,7 +1,6 @@
 from django.urls import path
 from .views import (
     DashboardSummaryView,
-    MeetingAdmissionsView,
     MeetingAttendanceExportView,
     MeetingAttendanceView,
     MeetingBreakoutActionView,
@@ -31,7 +30,6 @@ urlpatterns = [
     path("<str:meeting_code>/leave/", MeetingLeaveView.as_view(), name="meeting-leave"),
     path("<str:meeting_code>/end/", MeetingEndView.as_view(), name="meeting-end"),
     path("<str:meeting_code>/ice-servers/", MeetingIceServersView.as_view(), name="meeting-ice-servers"),
-    path("<str:meeting_code>/admissions/", MeetingAdmissionsView.as_view(), name="meeting-admissions"),
     path("<str:meeting_code>/permissions/", MeetingPermissionsView.as_view(), name="meeting-permissions"),
     path("<str:meeting_code>/moderation/", MeetingModerationView.as_view(), name="meeting-moderation"),
     path("<str:meeting_code>/chat/", MeetingChatMessagesView.as_view(), name="meeting-chat-list"),

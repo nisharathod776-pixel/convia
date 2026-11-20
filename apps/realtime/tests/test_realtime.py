@@ -38,7 +38,10 @@ async def test_socketio_jwt_auth_and_room_validation():
     assert m_obj.id == meeting.id
     assert is_host is True
 
-    # Non-member rejected from joining unauthorized room
+    # A valid authenticated participant is admitted immediately by the same
+    # admission policy used by the REST join endpoint.
     m_obj2, _, err2 = await get_authorized_meeting_context(outsider.id, meeting.meeting_code)
-    assert m_obj2 is None
-    assert err2 is not None
+    assert err2 is None
+    assert m_obj2.id == meeting.id
+    participant = await MeetingParticipant.objects.aget(meeting=meeting, user=outsider)
+    assert participant.admission_status == MeetingParticipant.ADMISSION_ADMITTED

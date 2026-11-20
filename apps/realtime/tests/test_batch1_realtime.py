@@ -36,7 +36,7 @@ async def _create_user_and_token(username, full_name, role="member"):
 
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
-async def test_batch1_waiting_room_admission_whiteboard_chat_and_screenshare_realtime():
+async def test_batch1_immediate_admission_and_realtime_room_realtime():
     teacher, t_tok = await _create_user_and_token("b1_teacher", "Prof. Ada")
     s1, s1_tok = await _create_user_and_token("b1_stud1", "Student One")
     s2, s2_tok = await _create_user_and_token("b1_stud2", "Student Two")
@@ -44,7 +44,6 @@ async def test_batch1_waiting_room_admission_whiteboard_chat_and_screenshare_rea
     meeting = await Meeting.objects.acreate(
         title="Batch 1 Realtime Classroom",
         host=teacher,
-        waiting_room_enabled=True,
         whiteboard_student_write_enabled=False,
         allow_student_screenshare=False,
     )
@@ -77,31 +76,27 @@ async def test_batch1_waiting_room_admission_whiteboard_chat_and_screenshare_rea
 
     try:
         t_joined = asyncio.Event()
-        t_req_ev = asyncio.Event()
         t_chat_ev = asyncio.Event()
         t_chat_del_ev = asyncio.Event()
         t_wb_draw_ev = asyncio.Event()
-        s1_wait_ev = asyncio.Event()
         s1_err_ev = asyncio.Event()
-        s1_admit_ev = asyncio.Event()
         s1_joined_ev = asyncio.Event()
         s1_perm_ev = asyncio.Event()
         s1_share_grant_ev = asyncio.Event()
         s1_share_deny_ev = asyncio.Event()
         s1_share_revoke_ev = asyncio.Event()
-        s2_wait_ev = asyncio.Event()
-        s2_reject_ev = asyncio.Event()
         s2_joined_ev = asyncio.Event()
         s2_share_grant_ev = asyncio.Event()
         s2_share_deny_ev = asyncio.Event()
         s1_spoof_media_ev = asyncio.Event()
 
         state = {
-            "t_requests": [],
             "t_chats": [],
             "t_deleted": [],
             "s1_errors": [],
             "s1_room": None,
+            "s2_room": None,
+            "s1_peer_joined": None,
             "s1_share": None,
             "s2_share": None,
             "s1_spoof_media": None,
@@ -110,11 +105,6 @@ async def test_batch1_waiting_room_admission_whiteboard_chat_and_screenshare_rea
         @c_t.on("room_joined")
         async def on_t_joined(d):
             t_joined.set()
-
-        @c_t.on("admission_requested")
-        async def on_t_req(d):
-            state["t_requests"].append(d)
-            t_req_ev.set()
 
         @c_t.on("chat_message")
         async def on_t_chat(d):
@@ -130,23 +120,19 @@ async def test_batch1_waiting_room_admission_whiteboard_chat_and_screenshare_rea
         async def on_t_wb(d):
             t_wb_draw_ev.set()
 
-        @c_s1.on("waiting_room_joined")
-        async def on_s1_wait(d):
-            s1_wait_ev.set()
-
         @c_s1.on("error_event")
         async def on_s1_err(d):
             state["s1_errors"].append(d)
             s1_err_ev.set()
 
-        @c_s1.on("admission_approved")
-        async def on_s1_admit(d):
-            s1_admit_ev.set()
-
         @c_s1.on("room_joined")
         async def on_s1_joined(d):
             state["s1_room"] = d
             s1_joined_ev.set()
+
+        @c_s1.on("participant_joined")
+        async def on_s1_participant_joined(d):
+            state["s1_peer_joined"] = d.get("participant")
 
         @c_s1.on("meeting_permissions_updated")
         async def on_s1_perm(d):
@@ -166,16 +152,9 @@ async def test_batch1_waiting_room_admission_whiteboard_chat_and_screenshare_rea
         async def on_s1_sr(d):
             s1_share_revoke_ev.set()
 
-        @c_s2.on("waiting_room_joined")
-        async def on_s2_wait(d):
-            s2_wait_ev.set()
-
-        @c_s2.on("admission_rejected")
-        async def on_s2_rej(d):
-            s2_reject_ev.set()
-
         @c_s2.on("room_joined")
         async def on_s2_joined(d):
+            state["s2_room"] = d
             s2_joined_ev.set()
 
         @c_s2.on("screen_share_granted")
@@ -200,33 +179,22 @@ async def test_batch1_waiting_room_admission_whiteboard_chat_and_screenshare_rea
         await c_s1.connect(url, socketio_path="/socket.io/", auth={"token": s1_tok})
         await c_s2.connect(url, socketio_path="/socket.io/", auth={"token": s2_tok})
 
-        # Unadmitted student cannot bypass waiting room via direct join_meeting
-        await c_s1.emit("join_meeting", {"meeting_code": meeting.meeting_code})
-        await asyncio.wait_for(s1_err_ev.wait(), timeout=5)
-        assert not s1_joined_ev.is_set()
-        s1_err_ev.clear()
-
-        # Student 1 enters waiting room -> teacher receives notification
-        await c_s1.emit("join_waiting_room", {"meeting_code": meeting.meeting_code})
-        await asyncio.wait_for(s1_wait_ev.wait(), timeout=5)
-        await asyncio.wait_for(t_req_ev.wait(), timeout=5)
-        assert state["t_requests"][0]["message"] == "Student One is requesting to join the meeting."
-
-        # Student 2 enters waiting room, then teacher rejects Student 2
-        t_req_ev.clear()
-        await c_s2.emit("join_waiting_room", {"meeting_code": meeting.meeting_code})
-        await asyncio.wait_for(s2_wait_ev.wait(), timeout=5)
-        await asyncio.wait_for(t_req_ev.wait(), timeout=5)
-        await c_t.emit("admission_decision", {"meeting_code": meeting.meeting_code, "user_id": s2.id, "decision": "reject"})
-        await asyncio.wait_for(s2_reject_ev.wait(), timeout=5)
-        assert not s2_joined_ev.is_set()
-
-        # Teacher admits Student 1 -> Student 1 joins room
-        await c_t.emit("admission_decision", {"meeting_code": meeting.meeting_code, "user_id": s1.id, "decision": "admit"})
-        await asyncio.wait_for(s1_admit_ev.wait(), timeout=5)
+        # A participant with a legacy waiting status is admitted by the shared
+        # Socket.IO admission path and joins immediately without host action.
         await c_s1.emit("join_meeting", {"meeting_code": meeting.meeting_code})
         await asyncio.wait_for(s1_joined_ev.wait(), timeout=5)
         assert state["s1_room"]["meeting_role"] == "student"
+        assert (await MeetingParticipant.objects.aget(meeting=meeting, user=s1)).admission_status == "admitted"
+
+        await c_s2.emit("join_meeting", {"meeting_code": meeting.meeting_code})
+        await asyncio.wait_for(s2_joined_ev.wait(), timeout=5)
+        assert (await MeetingParticipant.objects.aget(meeting=meeting, user=s2)).admission_status == "admitted"
+        assert any(peer["user_id"] == s1.id for peer in state["s2_room"]["peers"])
+        for _ in range(20):
+            if state["s1_peer_joined"]:
+                break
+            await asyncio.sleep(0.05)
+        assert state["s1_peer_joined"]["user_id"] == s2.id
 
         # Student 1 cannot draw or clear whiteboard by default
         await c_s1.emit(
@@ -291,13 +259,6 @@ async def test_batch1_waiting_room_admission_whiteboard_chat_and_screenshare_rea
         await asyncio.wait_for(s1_share_deny_ev.wait(), timeout=5)
         s1_share_deny_ev.clear()
         state["s1_share"] = None
-
-        # Admit Student 2 directly in DB to test concurrent student race
-        await MeetingParticipant.objects.filter(meeting=meeting, user=s2).aupdate(
-            admission_status="admitted", is_active=True
-        )
-        await c_s2.emit("join_meeting", {"meeting_code": meeting.meeting_code})
-        await asyncio.wait_for(s2_joined_ev.wait(), timeout=5)
 
         s1_perm_ev.clear()
         await c_t.emit(

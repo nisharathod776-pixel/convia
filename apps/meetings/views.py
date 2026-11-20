@@ -40,9 +40,9 @@ from .serializers import (
     MeetingParticipantSerializer,
     MeetingRecordingSerializer,
     MeetingSerializer,
-    WaitingParticipantSerializer,
 )
 from .services import (
+    admit_meeting_participant,
     build_attendance_report,
     close_all_attendance_sessions,
     close_user_attendance_sessions,
@@ -124,7 +124,6 @@ class MeetingListCreateView(APIView):
                 status=initial_status,
                 scheduled_at=scheduled_at,
                 admission_deadline=admission_deadline,
-                waiting_room_enabled=serializer.validated_data.get("waiting_room_enabled", True),
                 whiteboard_student_write_enabled=serializer.validated_data.get(
                     "whiteboard_student_write_enabled", False
                 ),
@@ -178,150 +177,21 @@ class MeetingJoinView(APIView):
                 ),
                 meeting_code=meeting_code.lower(),
             )
-            if meeting.status == Meeting.STATUS_ENDED:
-                return Response(
-                    {"detail": "This meeting has already ended."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
             now = timezone.now()
+            participant, error = admit_meeting_participant(request.user, meeting, at_time=now)
+            if error:
+                payload = {key: value for key, value in error.items() if key != "status"}
+                if error.get("code") == "admission_removed":
+                    payload["admission_status"] = MeetingParticipant.ADMISSION_REMOVED
+                return Response(payload, status=error["status"])
+
             is_teacher = is_meeting_teacher(request.user, meeting)
-
-            if is_teacher:
-                if meeting.status == Meeting.STATUS_SCHEDULED:
-                    meeting.status = Meeting.STATUS_ACTIVE
-                    meeting.save(update_fields=["status"])
-
-                participant, created = MeetingParticipant.objects.get_or_create(
-                    meeting=meeting,
-                    user=request.user,
-                    defaults={
-                        "role": MeetingParticipant.ROLE_TEACHER,
-                        "admission_status": MeetingParticipant.ADMISSION_ADMITTED,
-                        "is_active": True,
-                        "admitted_at": now,
-                    },
-                )
-                if not created:
-                    participant.is_active = True
-                    participant.left_at = None
-                    participant.admission_status = MeetingParticipant.ADMISSION_ADMITTED
-                    if participant.role not in MeetingParticipant.TEACHER_ROLES:
-                        participant.role = MeetingParticipant.ROLE_TEACHER
-                    if not participant.admitted_at:
-                        participant.admitted_at = now
-                    participant.save(
-                        update_fields=["is_active", "left_at", "admission_status", "role", "admitted_at"]
-                    )
-
-                open_attendance_session(meeting, request.user, MeetingParticipant.ROLE_TEACHER, at_time=now)
-                ActivityLog.objects.create(
-                    user=request.user,
-                    action="meeting_joined",
-                    detail=f"{meeting.meeting_code} (teacher)",
-                )
-                data = MeetingSerializer(meeting, context={"request": request}).data
-                data["admission_status"] = MeetingParticipant.ADMISSION_ADMITTED
-                data["participants"] = MeetingParticipantSerializer(
-                    meeting.participants.filter(
-                        is_active=True, admission_status=MeetingParticipant.ADMISSION_ADMITTED
-                    ).select_related("user", "current_breakout"),
-                    many=True,
-                ).data
-                data["waiting_room"] = WaitingParticipantSerializer(
-                    meeting.participants.filter(
-                        admission_status=MeetingParticipant.ADMISSION_WAITING
-                    ).select_related("user"),
-                    many=True,
-                ).data
-                return Response(data)
-
-            # Student / non-teacher flow
-            participant = (
-                MeetingParticipant.objects.select_for_update()
-                .filter(meeting=meeting, user=request.user)
-                .first()
-            )
-
-            if participant and participant.admission_status == MeetingParticipant.ADMISSION_REMOVED:
-                return Response(
-                    {
-                        "detail": "You were removed from this meeting by the teacher.",
-                        "code": "admission_removed",
-                        "admission_status": MeetingParticipant.ADMISSION_REMOVED,
-                    },
-                    status=status.HTTP_403_FORBIDDEN,
-                )
-
-            if participant and participant.admission_status == MeetingParticipant.ADMISSION_ADMITTED:
-                if meeting.status == Meeting.STATUS_SCHEDULED:
-                    meeting.status = Meeting.STATUS_ACTIVE
-                    meeting.save(update_fields=["status"])
-                participant.is_active = True
-                participant.left_at = None
-                participant.save(update_fields=["is_active", "left_at"])
-                open_attendance_session(meeting, request.user, MeetingParticipant.ROLE_STUDENT, at_time=now)
-                ActivityLog.objects.create(
-                    user=request.user,
-                    action="meeting_joined",
-                    detail=f"{meeting.meeting_code} (admitted student)",
-                )
-                data = MeetingSerializer(meeting, context={"request": request}).data
-                data["admission_status"] = MeetingParticipant.ADMISSION_ADMITTED
-                data["participants"] = MeetingParticipantSerializer(
-                    meeting.participants.filter(
-                        is_active=True, admission_status=MeetingParticipant.ADMISSION_ADMITTED
-                    ).select_related("user", "current_breakout"),
-                    many=True,
-                ).data
-                return Response(data)
-
-            # Enforce server-side admission window
-            if meeting.scheduled_at and now < meeting.scheduled_at:
-                return Response(
-                    {
-                        "detail": "This meeting has not started yet. Admission opens at the scheduled start time.",
-                        "code": "not_started",
-                        "scheduled_at": meeting.scheduled_at.isoformat(),
-                    },
-                    status=status.HTTP_403_FORBIDDEN,
-                )
-
-            if meeting.admission_deadline and now > meeting.admission_deadline:
-                return Response(
-                    {
-                        "detail": "The meeting admission time has expired. Please contact your teacher.",
-                        "code": "admission_expired",
-                        "admission_deadline": meeting.admission_deadline.isoformat(),
-                    },
-                    status=status.HTTP_403_FORBIDDEN,
-                )
-
-            # Guests are admitted immediately; host approval is disabled.
-            if meeting.status == Meeting.STATUS_SCHEDULED:
-                meeting.status = Meeting.STATUS_ACTIVE
-                meeting.save(update_fields=["status"])
-            if participant is None:
-                participant = MeetingParticipant.objects.create(
-                    meeting=meeting,
-                    user=request.user,
-                    role=MeetingParticipant.ROLE_STUDENT,
-                    admission_status=MeetingParticipant.ADMISSION_ADMITTED,
-                    is_active=True,
-                    admitted_at=now,
-                )
-            else:
-                participant.admission_status = MeetingParticipant.ADMISSION_ADMITTED
-                participant.is_active = True
-                participant.left_at = None
-                participant.admitted_at = participant.admitted_at or now
-                participant.save(update_fields=["admission_status", "is_active", "left_at", "admitted_at"])
-
-            open_attendance_session(meeting, request.user, MeetingParticipant.ROLE_STUDENT, at_time=now)
+            role = MeetingParticipant.ROLE_TEACHER if is_teacher else MeetingParticipant.ROLE_STUDENT
+            open_attendance_session(meeting, request.user, role, at_time=now)
             ActivityLog.objects.create(
                 user=request.user,
                 action="meeting_joined",
-                detail=meeting.meeting_code,
+                detail=f"{meeting.meeting_code} ({'teacher' if is_teacher else 'participant'})",
             )
             data = MeetingSerializer(meeting, context={"request": request}).data
             data["admission_status"] = MeetingParticipant.ADMISSION_ADMITTED
@@ -334,192 +204,6 @@ class MeetingJoinView(APIView):
             return Response(data)
 
 
-
-class MeetingAdmissionsView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, meeting_code):
-        meeting = get_object_or_404(
-            Meeting,
-            meeting_code=meeting_code.lower()
-        )
-
-        # Only the original Host can view admission requests.
-        if meeting.host_id != request.user.id:
-            return Response(
-                {"detail": "Only the Host can view admission requests."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        waiting = (
-            meeting.participants.filter(
-                admission_status=MeetingParticipant.ADMISSION_WAITING
-            )
-            .select_related("user")
-            .order_by("requested_at", "joined_at")
-        )
-
-        return Response({
-            "waiting_room": WaitingParticipantSerializer(
-                waiting,
-                many=True
-            ).data
-        })
-
-    def post(self, request, meeting_code):
-        decision = str(
-            request.data.get("decision", "")
-        ).strip().lower()
-
-        target_user_id = request.data.get("user_id")
-
-        if decision not in ("admit", "reject"):
-            return Response(
-                {"detail": "Field 'decision' must be 'admit' or 'reject'."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            target_user_id = int(target_user_id)
-        except (TypeError, ValueError):
-            return Response(
-                {"detail": "Valid integer 'user_id' is required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        with transaction.atomic():
-            meeting = get_object_or_404(
-                Meeting.objects.select_for_update(),
-                meeting_code=meeting_code.lower()
-            )
-
-            # Only the original Host can manage admission requests.
-            if meeting.host_id != request.user.id:
-                ActivityLog.objects.create(
-                    user=request.user,
-                    action="unauthorized_admission_decision",
-                    detail=(
-                        f"{meeting.meeting_code}: "
-                        f"user_id={target_user_id} decision={decision}"
-                    ),
-                )
-
-                return Response(
-                    {"detail": "Only the Host can manage admission requests."},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
-
-            if meeting.status == Meeting.STATUS_ENDED:
-                return Response(
-                    {"detail": "Meeting has already ended."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            participant = (
-                MeetingParticipant.objects.select_for_update()
-                .select_related("user")
-                .filter(
-                    meeting=meeting,
-                    user_id=target_user_id
-                )
-                .first()
-            )
-
-            if not participant:
-                return Response(
-                    {"detail": "Admission request not found for this Participant."},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-
-            if participant.is_teacher:
-                return Response(
-                    {"detail": "Cannot modify admission status for the Host."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            if participant.admission_status != MeetingParticipant.ADMISSION_WAITING:
-                return Response(
-                    {
-                        "detail": (
-                            f"Request is already "
-                            f"{participant.admission_status}."
-                        )
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            now = timezone.now()
-
-            if decision == "admit":
-                if meeting.status == Meeting.STATUS_SCHEDULED:
-                    meeting.status = Meeting.STATUS_ACTIVE
-                    meeting.save(update_fields=["status"])
-
-                participant.admission_status = (
-                    MeetingParticipant.ADMISSION_ADMITTED
-                )
-                participant.is_active = True
-                participant.admitted_at = now
-                participant.left_at = None
-                participant.decision_by = request.user
-
-                participant.save(
-                    update_fields=[
-                        "admission_status",
-                        "is_active",
-                        "admitted_at",
-                        "left_at",
-                        "decision_by",
-                    ]
-                )
-
-                ActivityLog.objects.create(
-                    user=request.user,
-                    action="admission_admitted",
-                    detail=f"{meeting.meeting_code}: @{participant.user.username}",
-                )
-
-            else:
-                participant.admission_status = (
-                    MeetingParticipant.ADMISSION_REJECTED
-                )
-                participant.is_active = False
-                participant.rejected_at = now
-                participant.decision_by = request.user
-
-                participant.save(
-                    update_fields=[
-                        "admission_status",
-                        "is_active",
-                        "rejected_at",
-                        "decision_by",
-                    ]
-                )
-
-                ActivityLog.objects.create(
-                    user=request.user,
-                    action="admission_rejected",
-                    detail=f"{meeting.meeting_code}: @{participant.user.username}",
-                )
-
-            waiting_qs = (
-                meeting.participants.filter(
-                    admission_status=MeetingParticipant.ADMISSION_WAITING
-                )
-                .select_related("user")
-                .order_by("requested_at", "joined_at")
-            )
-
-            return Response({
-                "participant": WaitingParticipantSerializer(
-                    participant
-                ).data,
-                "admission_status": participant.admission_status,
-                "waiting_room": WaitingParticipantSerializer(
-                    waiting_qs,
-                    many=True
-                ).data,
-            })
 
 class MeetingPermissionsView(APIView):
     permission_classes = [IsAuthenticated]
@@ -547,7 +231,6 @@ class MeetingPermissionsView(APIView):
             for bool_field, log_name in (
                 ("whiteboard_student_write_enabled", "wb_student"),
                 ("allow_student_screenshare", "student_screenshare"),
-                ("waiting_room_enabled", "waiting_room"),
                 ("allow_student_mic", "student_mic"),
                 ("allow_student_camera", "student_camera"),
                 ("allow_student_file_share", "student_file_share"),

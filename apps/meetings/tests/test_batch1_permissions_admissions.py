@@ -40,16 +40,8 @@ def test_platform_admin_not_treated_as_teacher_in_other_meeting():
     assert join_res.data["meeting_role"] == "student"
     assert join_res.data["is_host"] is False
 
-    # Admin cannot view waiting room or approve themselves
-    assert admin_client.get(f"/api/v1/meetings/{code}/admissions/").status_code == 403
-    assert (
-        admin_client.post(
-            f"/api/v1/meetings/{code}/admissions/",
-            {"user_id": admin_user.id, "decision": "admit"},
-            format="json",
-        ).status_code
-        == 403
-    )
+    # The host-controlled admission endpoint is no longer exposed.
+    assert admin_client.get(f"/api/v1/meetings/{code}/admissions/").status_code == 404
     assert (
         admin_client.patch(
             f"/api/v1/meetings/{code}/permissions/",
@@ -141,7 +133,7 @@ def test_scheduled_join_window_and_admission_deadline():
 
 
 @pytest.mark.django_db
-def test_join_auto_admits_guests_even_when_waiting_room_is_enabled():
+def test_join_immediately_admits_guests_without_host_approval():
     teacher = User.objects.create_user(username="tchr_wr", email="twr@example.com", password="Password123!")
     s1 = User.objects.create_user(username="stud_wr1", email="swr1@example.com", password="Password123!")
 
@@ -152,9 +144,18 @@ def test_join_auto_admits_guests_even_when_waiting_room_is_enabled():
 
     code = t_client.post(
         "/api/v1/meetings/",
-        {"title": "Automatic Admission Check", "waiting_room_enabled": True},
+        {"title": "Immediate Admission Check"},
         format="json",
     ).data["meeting_code"]
+
+    meeting = Meeting.objects.get(meeting_code=code)
+    MeetingParticipant.objects.create(
+        meeting=meeting,
+        user=s1,
+        role=MeetingParticipant.ROLE_STUDENT,
+        admission_status=MeetingParticipant.ADMISSION_WAITING,
+        is_active=False,
+    )
 
     # Guests are admitted directly and repeated joins reuse one membership.
     r1 = s_client.post(f"/api/v1/meetings/{code}/join/")
@@ -162,29 +163,15 @@ def test_join_auto_admits_guests_even_when_waiting_room_is_enabled():
     assert r1.status_code == 200
     assert r2.status_code == 200
     assert r1.data["admission_status"] == "admitted"
+    assert "waiting_room" not in r1.data
     assert MeetingParticipant.objects.filter(meeting__meeting_code=code, user=s1).count() == 1
 
     participant = MeetingParticipant.objects.get(meeting__meeting_code=code, user=s1)
     assert participant.admission_status == MeetingParticipant.ADMISSION_ADMITTED
     assert s_client.get(f"/api/v1/meetings/{code}/chat/").status_code == 200
 
-    # Student cannot reject/admit themselves
-    assert (
-        s_client.post(
-            f"/api/v1/meetings/{code}/admissions/",
-            {"user_id": s1.id, "decision": "admit"},
-            format="json",
-        ).status_code
-        == 403
-    )
-
-    # No admission request is pending for the teacher to approve or reject.
-    stale = t_client.post(
-        f"/api/v1/meetings/{code}/admissions/",
-        {"user_id": s1.id, "decision": "reject"},
-        format="json",
-    )
-    assert stale.status_code == 400
+    # Host approval is no longer an available API operation.
+    assert t_client.get(f"/api/v1/meetings/{code}/admissions/").status_code == 404
 
     # The guest remains admitted on subsequent joins.
     rejoin = s_client.post(f"/api/v1/meetings/{code}/join/")
