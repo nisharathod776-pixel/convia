@@ -8,6 +8,7 @@ export class MeetingSocketClient {
     this.socket = null;
     this.hasJoined = false;
     this.authRefreshAttempted = false;
+    this.joinWaiters = new Set();
   }
 
   connect() {
@@ -79,11 +80,14 @@ export class MeetingSocketClient {
     });
 
     this.socket.on('error_event', (payload) => {
-      this.handlers.onError?.(payload?.message || 'Room error.');
+      const message = payload?.message || 'Room error.';
+      this.handlers.onError?.(message);
+      if (!this.hasJoined) this.rejectJoinWaiters(new Error(message));
     });
 
     this.socket.on('room_joined', (payload) => {
       this.hasJoined = true;
+      this.resolveJoinWaiters();
       this.handlers.onRoomJoined?.(payload);
     });
 
@@ -137,8 +141,53 @@ export class MeetingSocketClient {
     return true;
   }
 
+  waitUntilJoined(timeoutMs = 10000) {
+    if (this.socket?.connected && this.hasJoined) return Promise.resolve();
+
+    return new Promise((resolve, reject) => {
+      const waiter = {
+        resolve,
+        reject,
+        timer: setTimeout(() => {
+          this.joinWaiters.delete(waiter);
+          reject(new Error('Real-time meeting connection is not ready. Please try again.'));
+        }, timeoutMs),
+      };
+      this.joinWaiters.add(waiter);
+
+      try {
+        if (!this.socket) {
+          this.connect();
+        } else if (!this.socket.connected && !this.socket.active) {
+          this.socket.connect();
+        }
+      } catch (err) {
+        this.joinWaiters.delete(waiter);
+        clearTimeout(waiter.timer);
+        reject(err);
+      }
+    });
+  }
+
+  resolveJoinWaiters() {
+    for (const waiter of this.joinWaiters) {
+      clearTimeout(waiter.timer);
+      waiter.resolve();
+    }
+    this.joinWaiters.clear();
+  }
+
+  rejectJoinWaiters(error) {
+    for (const waiter of this.joinWaiters) {
+      clearTimeout(waiter.timer);
+      waiter.reject(error);
+    }
+    this.joinWaiters.clear();
+  }
+
   disconnect() {
     if (this.socket) {
+      this.rejectJoinWaiters(new Error('Real-time meeting connection was closed.'));
       this.emit('leave_meeting', {});
       this.socket.disconnect();
       this.socket = null;

@@ -669,7 +669,9 @@ export class PeerConnectionManager {
     showToast(payload.message || 'Your screen share was stopped by the teacher.', 'warning');
   }
 
-  requestServerScreenShareLock() {
+  async requestServerScreenShareLock() {
+    await this.socketClient.waitUntilJoined();
+
     if (this._pendingShareRequest) {
       clearTimeout(this._pendingShareRequest.timer);
       this._pendingShareRequest = null;
@@ -685,7 +687,7 @@ export class PeerConnectionManager {
       if (!this.socketClient.emit('request_screen_share', {})) {
         clearTimeout(timer);
         this._pendingShareRequest = null;
-        reject(new Error('Real-time connection required to share screeeeeeeeeeeen.'));
+        reject(new Error('Real-time meeting connection is not ready. Please try again.'));
       }
     });
   }

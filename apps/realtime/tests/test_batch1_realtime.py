@@ -79,6 +79,7 @@ async def test_batch1_immediate_admission_and_realtime_room_realtime():
         t_chat_ev = asyncio.Event()
         t_chat_del_ev = asyncio.Event()
         t_wb_draw_ev = asyncio.Event()
+        t_screen_state_ev = asyncio.Event()
         s1_err_ev = asyncio.Event()
         s1_joined_ev = asyncio.Event()
         s1_perm_ev = asyncio.Event()
@@ -100,6 +101,7 @@ async def test_batch1_immediate_admission_and_realtime_room_realtime():
             "s1_share": None,
             "s2_share": None,
             "s1_spoof_media": None,
+            "t_screen_states": [],
         }
 
         @c_t.on("room_joined")
@@ -171,6 +173,11 @@ async def test_batch1_immediate_admission_and_realtime_room_realtime():
         async def on_t_media(d):
             state["s1_spoof_media"] = d
             s1_spoof_media_ev.set()
+
+        @c_t.on("screen_share_state")
+        async def on_t_screen_state(d):
+            state["t_screen_states"].append(d)
+            t_screen_state_ev.set()
 
         await c_t.connect(url, socketio_path="/socket.io/", auth={"token": t_tok})
         await c_t.emit("join_meeting", {"meeting_code": meeting.meeting_code})
@@ -275,6 +282,7 @@ async def test_batch1_immediate_admission_and_realtime_room_realtime():
         await asyncio.sleep(0.4)
         outcomes = sorted([str(state["s1_share"]), str(state["s2_share"])])
         assert outcomes == ["denied", "granted"]
+        assert any(item.get("active_screen_sharer_sid") for item in state["t_screen_states"])
 
         # Ensure winner is s1 (or whoever won) and test teacher preemption
         meeting_db = await Meeting.objects.aget(id=meeting.id)
@@ -285,6 +293,13 @@ async def test_batch1_immediate_admission_and_realtime_room_realtime():
         await asyncio.sleep(0.3)
         meeting_db = await Meeting.objects.aget(id=meeting.id)
         assert meeting_db.active_screen_sharer_id == teacher.id
+
+        t_screen_state_ev.clear()
+        await c_t.emit("stop_screen_share", {"meeting_code": meeting.meeting_code})
+        await asyncio.wait_for(t_screen_state_ev.wait(), timeout=5)
+        meeting_db = await Meeting.objects.aget(id=meeting.id)
+        assert meeting_db.active_screen_sharer_id is None
+        assert state["t_screen_states"][-1]["active_screen_sharer_sid"] == ""
 
         # Non-sharer spoofing media_state_change(screen_sharing=True) is neutralized
         s1_spoof_media_ev.clear()
