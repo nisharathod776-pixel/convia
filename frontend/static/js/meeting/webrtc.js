@@ -670,7 +670,29 @@ export class PeerConnectionManager {
   }
 
   async requestServerScreenShareLock() {
-    await this.socketClient.waitUntilJoined();
+    console.debug('[screen-share] lock request triggered');
+    console.debug('[screen-share] connection state before room wait', {
+      socketAvailable: Boolean(this.socketClient?.socket),
+      socketConnected: Boolean(this.socketClient?.socket?.connected),
+      meetingRoomJoined: Boolean(this.socketClient?.hasJoined),
+    });
+
+    try {
+      await this.socketClient.waitUntilJoined();
+    } catch (err) {
+      console.error('[screen-share] waiting for meeting room failed', {
+        message: err?.message || String(err),
+        socketAvailable: Boolean(this.socketClient?.socket),
+        socketConnected: Boolean(this.socketClient?.socket?.connected),
+        meetingRoomJoined: Boolean(this.socketClient?.hasJoined),
+      });
+      throw err;
+    }
+
+    console.debug('[screen-share] meeting room ready', {
+      socketConnected: Boolean(this.socketClient?.socket?.connected),
+      meetingRoomJoined: Boolean(this.socketClient?.hasJoined),
+    });
 
     if (this._pendingShareRequest) {
       clearTimeout(this._pendingShareRequest.timer);
@@ -680,19 +702,29 @@ export class PeerConnectionManager {
       const timer = setTimeout(() => {
         if (this._pendingShareRequest) {
           this._pendingShareRequest = null;
+          console.error('[screen-share] lock request timed out waiting for server response');
           reject(new Error('Screen share request timed out.'));
         }
       }, 5000);
       this._pendingShareRequest = { resolve, reject, timer };
-      if (!this.socketClient.emit('request_screen_share', {})) {
+      const emitted = this.socketClient.emit('request_screen_share', {});
+      console.debug('[screen-share] request_screen_share emit result', { emitted });
+      if (!emitted) {
         clearTimeout(timer);
         this._pendingShareRequest = null;
+        console.error('[screen-share] request_screen_share was not emitted');
         reject(new Error('Real-time meeting connection is not ready. Please try again.'));
       }
     });
   }
 
   async toggleScreenShare() {
+    console.debug('[screen-share] toggle triggered', {
+      currentlySharing: Boolean(this.isScreenSharing),
+      socketConnected: Boolean(this.socketClient?.socket?.connected),
+      meetingRoomJoined: Boolean(this.socketClient?.hasJoined),
+    });
+
     if (this.isScreenSharing) {
       await this.stopScreenShare();
       return;
@@ -716,6 +748,11 @@ export class PeerConnectionManager {
     try {
       await this.requestServerScreenShareLock();
     } catch (err) {
+      console.error('[screen-share] lock request failed', {
+        message: err?.message || String(err),
+        socketConnected: Boolean(this.socketClient?.socket?.connected),
+        meetingRoomJoined: Boolean(this.socketClient?.hasJoined),
+      });
       showToast(err.message || 'Screen sharing is not permitted.', 'warning');
       return;
     }
@@ -727,6 +764,10 @@ export class PeerConnectionManager {
       });
     } catch (err) {
       this.socketClient.emit('stop_screen_share', {});
+      console.error('[screen-share] display capture failed', {
+        name: err?.name || 'Error',
+        message: err?.message || String(err),
+      });
       if (err?.name !== 'AbortError') {
         showToast('Screen sharing permission was denied or cancelled.', 'warning');
       }
