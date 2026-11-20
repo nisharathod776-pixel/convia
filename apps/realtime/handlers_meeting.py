@@ -498,7 +498,7 @@ def _update_permissions_db(meeting_code: str, teacher_id: int, data: dict):
         )
         if not teacher or not meeting:
             return False, "Meeting not found.", None, None
-        if not is_meeting_teacher(teacher, meeting):
+        if meeting.host_id != teacher.id:
             ActivityLog.objects.create(
                 user=teacher,
                 action="unauthorized_permission_change",
@@ -1320,21 +1320,11 @@ async def leave_waiting_room(sid, data):
 @sio.event
 async def admission_decision(sid, data):
     data = data if isinstance(data, dict) else {}
-    code, user_data = await verify_sid_in_room(sid, data.get("meeting_code"))
+    code, user_data = await verify_teacher_in_room(sid, data.get("meeting_code"))
     if not code or not user_data:
         await sio.emit(
             "error_event",
-            {"message": "Unauthorized request."},
-            to=sid,
-        )
-        return
-
-    # Verify user is host
-    meeting = await sync_to_async(Meeting.objects.get)(meeting_code=code)
-    if meeting.host_id != user_data["user_id"]:
-        await sio.emit(
-            "error_event",
-            {"message": "Only the Host can admit or reject students."},
+            {"message": "Only the meeting teacher can admit or reject students."},
             to=sid,
         )
         return
@@ -1370,7 +1360,7 @@ async def admission_decision(sid, data):
                     "admission_rejected",
                     {
                         "meeting_code": code,
-                        "detail": "Your admission request was declined by the Host.",
+                        "detail": "Your admission request was declined by the teacher.",
                     },
                     to=target_sid,
                 )
@@ -1380,7 +1370,7 @@ async def admission_decision(sid, data):
                 target_session["waiting_rooms"].discard(code)
                 await sio.save_session(target_sid, target_session)
 
-        await _emit_to_host(code, "waiting_room_updated", {"meeting_code": code, "waiting_room": waiting_list})
+        await _emit_to_teachers(code, "waiting_room_updated", {"meeting_code": code, "waiting_room": waiting_list})
 
 
 @sio.event
