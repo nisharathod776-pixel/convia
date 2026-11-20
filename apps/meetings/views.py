@@ -276,16 +276,6 @@ class MeetingJoinView(APIView):
                 ).data
                 return Response(data)
 
-            if participant and participant.admission_status == MeetingParticipant.ADMISSION_REJECTED:
-                return Response(
-                    {
-                        "detail": "Your admission request was declined by the teacher.",
-                        "code": "admission_rejected",
-                        "admission_status": MeetingParticipant.ADMISSION_REJECTED,
-                    },
-                    status=status.HTTP_403_FORBIDDEN,
-                )
-
             # Enforce server-side admission window
             if meeting.scheduled_at and now < meeting.scheduled_at:
                 return Response(
@@ -307,46 +297,7 @@ class MeetingJoinView(APIView):
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
-            if meeting.waiting_room_enabled:
-                if participant is None:
-                    participant = MeetingParticipant.objects.create(
-                        meeting=meeting,
-                        user=request.user,
-                        role=MeetingParticipant.ROLE_STUDENT,
-                        admission_status=MeetingParticipant.ADMISSION_WAITING,
-                        is_active=False,
-                        requested_at=now,
-                    )
-                    ActivityLog.objects.create(
-                        user=request.user,
-                        action="admission_requested",
-                        detail=f"{meeting.meeting_code}: @{request.user.username}",
-                    )
-                elif participant.admission_status != MeetingParticipant.ADMISSION_WAITING:
-                    participant.admission_status = MeetingParticipant.ADMISSION_WAITING
-                    participant.is_active = False
-                    participant.requested_at = now
-                    participant.save(update_fields=["admission_status", "is_active", "requested_at"])
-
-                return Response(
-                    {
-                        "id": str(meeting.id),
-                        "meeting_code": meeting.meeting_code,
-                        "title": meeting.title,
-                        "host_username": meeting.host.username,
-                        "is_host": False,
-                        "meeting_role": MeetingParticipant.ROLE_STUDENT,
-                        "status": meeting.status,
-                        "scheduled_at": meeting.scheduled_at,
-                        "admission_deadline": meeting.admission_deadline,
-                        "waiting_room_enabled": meeting.waiting_room_enabled,
-                        "admission_status": MeetingParticipant.ADMISSION_WAITING,
-                        "detail": "Waiting for teacher approval to join the meeting.",
-                    },
-                    status=status.HTTP_202_ACCEPTED,
-                )
-
-            # Fallback if waiting room explicitly disabled on meeting
+            # Guests are admitted immediately; host approval is disabled.
             if meeting.status == Meeting.STATUS_SCHEDULED:
                 meeting.status = Meeting.STATUS_ACTIVE
                 meeting.save(update_fields=["status"])

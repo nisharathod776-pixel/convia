@@ -32,25 +32,7 @@ def test_meeting_lifecycle_and_permissions():
     ice_denied = guest_client.get(f"/api/v1/meetings/{code}/ice-servers/")
     assert ice_denied.status_code == 403
 
-    # Guest joins meeting -> placed in waiting room (202)
-    waiting_res = guest_client.post(f"/api/v1/meetings/{code}/join/")
-    assert waiting_res.status_code == 202
-    assert waiting_res.data["admission_status"] == "waiting"
-
-    # Guest still cannot access ICE config while waiting
-    ice_waiting = guest_client.get(f"/api/v1/meetings/{code}/ice-servers/")
-    assert ice_waiting.status_code == 403
-
-    # Host admits guest
-    admit_res = host_client.post(
-        f"/api/v1/meetings/{code}/admissions/",
-        {"user_id": guest.id, "decision": "admit"},
-        format="json",
-    )
-    assert admit_res.status_code == 200
-    assert admit_res.data["admission_status"] == "admitted"
-
-    # Admitted guest enters meeting
+    # Guest joins directly without host approval.
     join_res = guest_client.post(f"/api/v1/meetings/{code}/join/")
     assert join_res.status_code == 200
     assert join_res.data["admission_status"] == "admitted"
@@ -99,5 +81,5 @@ def test_meeting_join_with_nullable_screen_sharer_on_postgresql():
     client.force_authenticate(user=guest)
     response = client.post(f"/api/v1/meetings/{meeting.meeting_code}/join/")
 
-    assert response.status_code == 202
-    assert response.data["admission_status"] == "waiting"
+    assert response.status_code == 200
+    assert response.data["admission_status"] == "admitted"

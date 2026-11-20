@@ -33,10 +33,10 @@ def test_platform_admin_not_treated_as_teacher_in_other_meeting():
     code = res.data["meeting_code"]
     assert res.data["meeting_role"] == "teacher"
 
-    # Admin joining someone else's meeting is treated as a student in the waiting room
+    # A platform admin joining another user's meeting is admitted as a student.
     join_res = admin_client.post(f"/api/v1/meetings/{code}/join/")
-    assert join_res.status_code == 202
-    assert join_res.data["admission_status"] == "waiting"
+    assert join_res.status_code == 200
+    assert join_res.data["admission_status"] == "admitted"
     assert join_res.data["meeting_role"] == "student"
     assert join_res.data["is_host"] is False
 
@@ -114,13 +114,9 @@ def test_scheduled_join_window_and_admission_deadline():
     assert open_res.status_code == 201
     open_code = open_res.data["meeting_code"]
 
-    wait_res = early_client.post(f"/api/v1/meetings/{open_code}/join/")
-    assert wait_res.status_code == 202
-    assert t_client.post(
-        f"/api/v1/meetings/{open_code}/admissions/",
-        {"user_id": student_early.id, "decision": "admit"},
-        format="json",
-    ).status_code == 200
+    joined_res = early_client.post(f"/api/v1/meetings/{open_code}/join/")
+    assert joined_res.status_code == 200
+    assert joined_res.data["admission_status"] == "admitted"
 
     # Simulate deadline expiration now
     meeting_obj = Meeting.objects.get(meeting_code=open_code)
@@ -145,7 +141,7 @@ def test_scheduled_join_window_and_admission_deadline():
 
 
 @pytest.mark.django_db
-def test_waiting_room_duplicate_guard_reject_and_stale_requests():
+def test_join_auto_admits_guests_even_when_waiting_room_is_enabled():
     teacher = User.objects.create_user(username="tchr_wr", email="twr@example.com", password="Password123!")
     s1 = User.objects.create_user(username="stud_wr1", email="swr1@example.com", password="Password123!")
 
@@ -154,18 +150,23 @@ def test_waiting_room_duplicate_guard_reject_and_stale_requests():
     s_client = APIClient()
     s_client.force_authenticate(user=s1)
 
-    code = t_client.post("/api/v1/meetings/", {"title": "Waiting Room Check"}, format="json").data["meeting_code"]
+    code = t_client.post(
+        "/api/v1/meetings/",
+        {"title": "Automatic Admission Check", "waiting_room_enabled": True},
+        format="json",
+    ).data["meeting_code"]
 
-    # Repeated join attempts do not duplicate waiting room entries
+    # Guests are admitted directly and repeated joins reuse one membership.
     r1 = s_client.post(f"/api/v1/meetings/{code}/join/")
     r2 = s_client.post(f"/api/v1/meetings/{code}/join/")
-    assert r1.status_code == 202
-    assert r2.status_code == 202
+    assert r1.status_code == 200
+    assert r2.status_code == 200
+    assert r1.data["admission_status"] == "admitted"
     assert MeetingParticipant.objects.filter(meeting__meeting_code=code, user=s1).count() == 1
 
-    # Unadmitted student sees only waiting room response without participant list leak
-    assert "participants" not in r1.data
-    assert s_client.get(f"/api/v1/meetings/{code}/chat/").status_code == 403
+    participant = MeetingParticipant.objects.get(meeting__meeting_code=code, user=s1)
+    assert participant.admission_status == MeetingParticipant.ADMISSION_ADMITTED
+    assert s_client.get(f"/api/v1/meetings/{code}/chat/").status_code == 200
 
     # Student cannot reject/admit themselves
     assert (
@@ -177,27 +178,18 @@ def test_waiting_room_duplicate_guard_reject_and_stale_requests():
         == 403
     )
 
-    # Teacher rejects student
-    rej = t_client.post(
+    # No admission request is pending for the teacher to approve or reject.
+    stale = t_client.post(
         f"/api/v1/meetings/{code}/admissions/",
         {"user_id": s1.id, "decision": "reject"},
         format="json",
     )
-    assert rej.status_code == 200
-    assert rej.data["admission_status"] == "rejected"
-
-    # Re-processing already rejected request fails cleanly
-    stale = t_client.post(
-        f"/api/v1/meetings/{code}/admissions/",
-        {"user_id": s1.id, "decision": "admit"},
-        format="json",
-    )
     assert stale.status_code == 400
 
-    # Rejected student blocked on subsequent join
-    denied = s_client.post(f"/api/v1/meetings/{code}/join/")
-    assert denied.status_code == 403
-    assert denied.data["code"] == "admission_rejected"
+    # The guest remains admitted on subsequent joins.
+    rejoin = s_client.post(f"/api/v1/meetings/{code}/join/")
+    assert rejoin.status_code == 200
+    assert rejoin.data["admission_status"] == "admitted"
 
 
 @pytest.mark.django_db
