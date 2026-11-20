@@ -1,0 +1,192 @@
+[1mdiff --git a/frontend/static/js/meeting/room.js b/frontend/static/js/meeting/room.js[m
+[1mindex c144bbc..16dbaba 100644[m
+[1m--- a/frontend/static/js/meeting/room.js[m
+[1m+++ b/frontend/static/js/meeting/room.js[m
+[36m@@ -566,7 +566,7 @@[m [masync function initMeetingRoom() {[m
+         allAdmittedParticipants = (detail.participants || []).filter([m
+           (p) => p.admission_status === 'admitted' && p.meeting_role !== 'teacher' && !p.is_host,[m
+         );[m
+[31m-      }catch {[m
+[32m+[m[32m      } catch {[m
+         allAdmittedParticipants = [];[m
+       }[m
+     }[m
+[36m@@ -598,7 +598,7 @@[m [masync function initMeetingRoom() {[m
+           joinBtn.textContent = 'Leave to Main';[m
+           joinBtn.disabled = !isTeacher && room.allow_return_to_main === false;[m
+           joinBtn.addEventListener('click', () => handleBreakoutAction({ action: 'return_to_main' }));[m
+[31m-        }else {[m
+[32m+[m[32m        } else {[m
+           joinBtn.textContent = isTeacher ? 'Enter Room' : 'Join Room';[m
+           joinBtn.addEventListener('click', () => handleBreakoutAction({[m
+             action: 'switch',[m
+[36m@@ -635,7 +635,7 @@[m [masync function initMeetingRoom() {[m
+ [m
+             await loadBreakoutsFromRest();[m
+             showToast('Breakout room removed.', 'success');[m
+[31m-          }catch (err) {[m
+[32m+[m[32m          } catch (err) {[m
+             showToast(err.message || 'Could not remove breakout room.', 'error');[m
+           }[m
+         });[m
+[36m@@ -794,14 +794,14 @@[m [masync function initMeetingRoom() {[m
+               });[m
+               showToast('Attendance updated.', 'success');[m
+               await loadAttendance();[m
+[31m-            }catch (err) {[m
+[32m+[m[32m            } catch (err) {[m
+               showToast(err.message || 'Could not update attendance.', 'error');[m
+               saveBtn.disabled = false;[m
+             }[m
+           });[m
+           editRow.append(statusSel, noteInput, saveBtn);[m
+           row.appendChild(editRow);[m
+[31m-        }else if (rec.note) {[m
+[32m+[m[32m        } else if (rec.note) {[m
+           const noteDiv = document.createElement('div');[m
+           noteDiv.className = 'meeting-meta';[m
+           noteDiv.textContent = `Note: ${rec.note}`;[m
+[36m@@ -893,7 +893,7 @@[m [masync function initMeetingRoom() {[m
+             previewWrap.innerHTML = '';[m
+             previewWrap.appendChild(player);[m
+             playBtn.disabled = false;[m
+[31m-          }catch (err) {[m
+[32m+[m[32m          } catch (err) {[m
+             showToast(err.message, 'error');[m
+             playBtn.disabled = false;[m
+           }[m
+[36m@@ -907,7 +907,7 @@[m [masync function initMeetingRoom() {[m
+           try {[m
+             const url = await fetchAuthorizedRecordingBlobUrl(rec.id, false);[m
+             downloadBlobUrl(url, rec.original_name || `${rec.title}.webm`);[m
+[31m-          }catch (err) {[m
+[32m+[m[32m          } catch (err) {[m
+             showToast(err.message, 'error');[m
+           }[m
+         });[m
+[36m@@ -928,7 +928,7 @@[m [masync function initMeetingRoom() {[m
+               });[m
+               showToast('Recording visibility updated.', 'success');[m
+               await loadRecordings();[m
+[31m-            }catch (err) {[m
+[32m+[m[32m            } catch (err) {[m
+               showToast(err.message, 'error');[m
+             }[m
+           });[m
+[36m@@ -942,7 +942,7 @@[m [masync function initMeetingRoom() {[m
+               await apiRequest(`/meetings/recordings/${rec.id}/`, { method: 'DELETE' });[m
+               showToast('Recording deleted.', 'info');[m
+               await loadRecordings();[m
+[31m-            }catch (err) {[m
+[32m+[m[32m            } catch (err) {[m
+               showToast(err.message, 'error');[m
+             }[m
+           });[m
+[36m@@ -1142,7 +1142,7 @@[m [masync function handleAdmissionDecision(targetUserId, decision) {[m
+           body: JSON.stringify(payload),[m
+         });[m
+         breakoutRooms = res.rooms || [];[m
+[31m-      }else {[m
+[32m+[m[32m      } else {[m
+         const res = await apiRequest(`/meetings/${encodeURIComponent(meetingCode)}/breakouts/action/`, {[m
+           method: 'POST',[m
+           body: JSON.stringify(payload),[m
+[36m@@ -1205,7 +1205,7 @@[m [masync function handleAdmissionDecision(targetUserId, decision) {[m
+       }[m
+       if (mediaReady) {[m
+         await peerManager.syncRoomPeers(payload.peers || []);[m
+[31m-      }else {[m
+[32m+[m[32m      } else {[m
+         pendingRoomPeers = payload.peers || [];[m
+       }[m
+       recorder?.refreshAudioSources(peerManager);[m
+[36m@@ -1234,7 +1234,7 @@[m [masync function handleAdmissionDecision(targetUserId, decision) {[m
+       updateRecordingBannerUi(currentPerms.is_recording);[m
+       if (err?.name === 'NotAllowedError' || err?.name === 'AbortError') {[m
+         showToast('Screen capture cancelled. You can use Audio-Only Rec or pick a tab.', 'warning');[m
+[31m-      }else {[m
+[32m+[m[32m      } else {[m
+         showToast(err.message || 'Unable to start recording.', 'error');[m
+       }[m
+     }[m
+[36m@@ -1379,7 +1379,7 @@[m [masync function handleAdmissionDecision(targetUserId, decision) {[m
+         hideAdmissionGate();[m
+         showToast('You have been admitted to the meeting.', 'success');[m
+         await enterAdmittedRoom(admittedMeeting);[m
+[31m-      }catch (err) {[m
+[32m+[m[32m      } catch (err) {[m
+         showAdmissionGate({[m
+           title: 'Unable to Enter Meeting',[m
+           message: err.message || 'Admission could not be completed.',[m
+[36m@@ -1447,7 +1447,7 @@[m [masync function handleAdmissionDecision(targetUserId, decision) {[m
+         }[m
+         if (mediaReady) {[m
+           await peerManager.syncRoomPeers(payload.peers || []);[m
+[31m-        }else {[m
+[32m+[m[32m        } else {[m
+           pendingRoomPeers = payload.peers || [];[m
+         }[m
+       }[m
+[36m@@ -1472,7 +1472,7 @@[m [masync function handleAdmissionDecision(targetUserId, decision) {[m
+       if (payload?.sid && !mediaReady) {[m
+         pendingParticipants.delete(payload.sid);[m
+         pendingRoomPeers = pendingRoomPeers.filter((participant) => participant.sid !== payload.sid);[m
+[31m-      }else if (peerManager && payload?.sid) {[m
+[32m+[m[32m      } else if (peerManager && payload?.sid) {[m
+         peerManager.removePeer(payload.sid);[m
+       }[m
+     },[m
+[36m@@ -1503,9 +1503,9 @@[m [masync function handleAdmissionDecision(targetUserId, decision) {[m
+       updateChatUiState();[m
+       if (payload.action === 'mute_mic' || payload.action === 'mute_all_mics') {[m
+         showToast('Your microphone was muted by the teacher.', 'warning');[m
+[31m-      }else if (payload.action === 'disable_cam' || payload.action === 'disable_all_cams') {[m
+[32m+[m[32m      } else if (payload.action === 'disable_cam' || payload.action === 'disable_all_cams') {[m
+         showToast('Your camera was disabled by the teacher.', 'warning');[m
+[31m-      }else if (payload.action === 'mute_chat') {[m
+[32m+[m[32m      } else if (payload.action === 'mute_chat') {[m
+         showToast('Your chat was muted by the teacher.', 'warning');[m
+       }[m
+     },[m
+[36m@@ -1521,7 +1521,7 @@[m [masync function handleAdmissionDecision(targetUserId, decision) {[m
+               : 'The teacher disabled student cameras. Your camera is off.',[m
+             currentCameraPermission ? 'info' : 'warning',[m
+           );[m
+[31m-        }else {[m
+[32m+[m[32m        } else {[m
+           showToast('Classroom permissions updated by the teacher.', 'info');[m
+         }[m
+       }[m
+[36m@@ -1549,7 +1549,7 @@[m [masync function handleAdmissionDecision(targetUserId, decision) {[m
+       updateRecordingBannerUi(currentPerms.is_recording, payload?.started_at);[m
+       if (payload?.is_recording) {[m
+         showToast('Session recording started by the teacher.', 'info');[m
+[31m-      }else {[m
+[32m+[m[32m      } else {[m
+         showToast('Session recording stopped.', 'info');[m
+         loadRecordings();[m
+       }[m
+[36m@@ -1812,7 +1812,7 @@[m [masync function handleAdmissionDecision(targetUserId, decision) {[m
+       }[m
+       try {[m
+         await apiRequest(`/meetings/${encodeURIComponent(meetingCode)}/leave/`, { method: 'POST' });[m
+[31m-      }catch {[m
+[32m+[m[32m      } catch {[m
+         // Proceed with cleanup[m
+       }[m
+       socketClient.disconnect();[m
+[36m@@ -1838,7 +1838,7 @@[m [masync function handleAdmissionDecision(targetUserId, decision) {[m
+         peerManager.cleanup();[m
+         showToast('Meeting ended.', 'success');[m
+         window.location.replace('/dashboard/');[m
+[31m-      }catch (err) {[m
+[32m+[m[32m      } catch (err) {[m
+         showToast(err.message, 'error');[m
+         endBtn.disabled = false;[m
+       }[m
+[36m@@ -1983,3 +1983,5 @@[m [masync function handleAdmissionDecision(targetUserId, decision) {[m
+ }[m
+ [m
+ document.addEventListener('DOMContentLoaded', initMeetingRoom);[m
+[41m+[m
+[41m+[m

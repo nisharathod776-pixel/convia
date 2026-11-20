@@ -685,7 +685,7 @@ export class PeerConnectionManager {
       if (!this.socketClient.emit('request_screen_share', {})) {
         clearTimeout(timer);
         this._pendingShareRequest = null;
-        reject(new Error('Real-time connection required to share screen.'));
+        reject(new Error('Real-time connection required to share screeeeeeeeeeeen.'));
       }
     });
   }
