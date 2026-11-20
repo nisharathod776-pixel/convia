@@ -1,7 +1,7 @@
 import { cpSync, mkdirSync, readFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 
 const projectRoot = fileURLToPath(new URL('.', import.meta.url));
 const frontendRoot = resolve(projectRoot, 'frontend');
@@ -29,7 +29,7 @@ const pageRoutes = {
   '/admin-panel': '/templates/admin.html',
 };
 
-function renderDjangoTemplate(pageHtml) {
+function renderDjangoTemplate(pageHtml: string) {
   const blocks = new Map(
     [...pageHtml.matchAll(/{%\s*block\s+(\w+)\s*%}([\s\S]*?){%\s*endblock\s*%}/g)]
       .map((match) => [match[1], match[2]]),
@@ -44,7 +44,7 @@ function renderDjangoTemplate(pageHtml) {
     .replace(/\{\{\s*meeting_code\|default:''\s*\}\}/g, '');
 }
 
-const renderExistingDjangoTemplates = {
+const renderExistingDjangoTemplates: Plugin = {
   name: 'render-existing-django-templates-for-static-hosting',
   transformIndexHtml: {
     order: 'pre',
@@ -63,7 +63,9 @@ const renderExistingDjangoTemplates = {
       const meetingMatch = normalizedPath.match(/^\/meeting\/([^/]+)$/);
       const templatePath = meetingMatch
         ? '/templates/meeting.html'
-        : pageRoutes[normalizedPath];
+        : Object.hasOwn(pageRoutes, normalizedPath)
+          ? pageRoutes[normalizedPath as keyof typeof pageRoutes]
+          : undefined;
 
       if (templatePath) {
         request.url = `${templatePath}${requestUrl.search}`;
@@ -73,7 +75,7 @@ const renderExistingDjangoTemplates = {
   },
 };
 
-const copyDjangoStaticAssets = {
+const copyDjangoStaticAssets: Plugin = {
   name: 'copy-django-static-assets',
   apply: 'build',
   closeBundle() {
