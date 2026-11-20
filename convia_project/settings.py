@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() in ("1", "true", "yes")
+DEBUG = os.getenv("DJANGO_DEBUG", "False").strip().lower() in ("1", "true", "yes")
 
 
 def _configured_origins(env_name, default):
@@ -98,9 +98,12 @@ ASGI_APPLICATION = "convia_project.asgi.application"
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 if DATABASE_URL:
-    DATABASES = {
-        "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600)
-    }
+    database_config = dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+    if not DEBUG and database_config["ENGINE"] != "django.db.backends.postgresql":
+        raise RuntimeError("DATABASE_URL must use PostgreSQL when DEBUG is False.")
+    DATABASES = {"default": database_config}
+elif not DEBUG:
+    raise RuntimeError("DATABASE_URL is required when DEBUG is False.")
 else:
     DATABASES = {
         "default": {
