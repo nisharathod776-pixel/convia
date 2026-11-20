@@ -173,7 +173,9 @@ class MeetingJoinView(APIView):
     def post(self, request, meeting_code):
         with transaction.atomic():
             meeting = get_object_or_404(
-                Meeting.objects.select_for_update().select_related("host", "active_screen_sharer"),
+                Meeting.objects.select_for_update(of=("self",)).select_related(
+                    "host", "active_screen_sharer"
+                ),
                 meeting_code=meeting_code.lower(),
             )
             if meeting.status == Meeting.STATUS_ENDED:
