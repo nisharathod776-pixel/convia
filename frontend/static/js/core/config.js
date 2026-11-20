@@ -1,11 +1,10 @@
 const viteEnv = import.meta.env ?? {};
-const railwayOrigin = 'https://convia-production-797f08a0.up.railway.app';
 
-export const API_ORIGIN = (viteEnv.VITE_API_BASE_URL || (viteEnv.PROD ? railwayOrigin : ''))
+export const API_ORIGIN = (viteEnv.VITE_API_BASE_URL || '')
   .trim()
   .replace(/\/+$/, '');
 export const API_BASE = API_ORIGIN ? `${API_ORIGIN}/api/v1` : '/api/v1';
-export const SOCKET_URL = (viteEnv.VITE_SOCKET_URL || (viteEnv.PROD ? railwayOrigin : ''))
+export const SOCKET_URL = (viteEnv.VITE_SOCKET_URL || '')
   .trim()
   .replace(/\/+$/, '');
 export const STORAGE_KEYS = {
